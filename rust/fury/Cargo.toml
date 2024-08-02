@@ -36,6 +36,9 @@ thiserror = { default-features = false, version = "1.0" }
 name = "simd_bench"
 harness = false
 
+[[bench]]
+name = "simd_utf16_to_utf8"
+harness = false
 
 [dev-dependencies]
 criterion = "0.5.1"

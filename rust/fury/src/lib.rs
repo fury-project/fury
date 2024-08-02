@@ -30,7 +30,7 @@ pub use fury_derive::*;
 pub use meta::{Encoding, MetaStringDecoder, MetaStringEncoder};
 pub use row::{from_row, to_row};
 pub use serializer::to_buffer;
-pub use util::to_utf8;
+pub use util::{utf16_to_utf8, utf16_to_utf8_simd};
 
 pub mod __derive {
     pub use crate::buffer::{Reader, Writer};
