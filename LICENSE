@@ -272,11 +272,6 @@ The text of each license is also included in licenses/LICENSE-[project].txt.
       java/fury-core/src/main/java/org/apache/fury/type/Generics.java
       java/fury-core/src/test/java/org/apache/fury/type/GenericsTest.java
 
-* v8 (https://chromium.googlesource.com/v8/v8.git)
-    Files:
-      javascript/packages/hps/src/v8-fast-api-calls.h
-
-
 ================================================================
 MIT licenses
 ================================================================

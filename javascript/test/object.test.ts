@@ -219,13 +219,12 @@ describe('object', () => {
   });
 
   test("should partial record work", () => {
-    const hps = undefined;
     const description = Type.object('ws-channel-protocol', {
         kind: Type.string(),
         path: Type.string(),
     });
 
-    const fury = new Fury({ hps });
+    const fury = new Fury({});
     const { serialize, deserialize } = fury.registerSerializer(description);
     const bin = serialize({
         kind: "123",

@@ -25,6 +25,5 @@
   },
   "repository": "git@github.com:apache/fury.git",
   "workspaces": [
-    "packages/hps"
   ]
 }

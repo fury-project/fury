@@ -19,10 +19,9 @@
 
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 const semver = require("semver");
-const hpsEnable = semver.gt(process.versions.node, '20.0.0') && process.platform !== 'win32';
 
 module.exports = {
-  collectCoverage: hpsEnable,
+  collectCoverage: true,
   preset: 'ts-jest',
   testEnvironment: 'node',
   collectCoverageFrom: [
@@ -31,9 +30,6 @@ module.exports = {
     "!**/build/**",
     "!packages/fury/lib/murmurHash3.ts"
   ],
-  "testPathIgnorePatterns" : [
-    hpsEnable ? null : "(.*)/hps.test.ts$",
-  ].filter(Boolean),
   transform: {
     '\\.ts$': ['ts-jest', {
       tsconfig: {

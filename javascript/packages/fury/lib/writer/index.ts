@@ -22,6 +22,11 @@ import { PlatformBuffer, alloc, strByteLength } from "../platformBuffer";
 import { OwnershipError } from "../error";
 import { toFloat16 } from "./number";
 
+declare global {
+  // eslint-disable-next-line
+  var isOneByteString: ((input: string) => boolean) | undefined;
+}
+
 const MAX_POOL_SIZE = 1024 * 1024 * 3; // 3MB
 
 export class BinaryWriter {
@@ -32,12 +37,10 @@ export class BinaryWriter {
   private reserved = 0;
   private locked = false;
   private config: Config;
-  private hpsEnable = false;
 
   constructor(config: Config) {
     this.initPoll();
     this.config = config;
-    this.hpsEnable = Boolean(config?.hps);
   }
 
   private initPoll() {
@@ -188,14 +191,13 @@ export class BinaryWriter {
   }
 
   stringOfVarUInt32Fast(v: string) {
-    const { isLatin1: detectIsLatin1, stringCopy } = this.config.hps!;
-    const isLatin1 = detectIsLatin1(v);
+    const isLatin1 = globalThis.isOneByteString!(v);
     const len = isLatin1 ? v.length : strByteLength(v);
     this.dataView.setUint8(this.cursor++, isLatin1 ? LATIN1 : UTF8);
     this.varUInt32(len);
     this.reserve(len);
     if (isLatin1) {
-      stringCopy(v, this.platformBuffer, this.cursor);
+      this.platformBuffer.write(v, this.cursor, "latin1");
     } else {
       if (len < 40) {
         this.fastWriteStringUtf8(v, this.platformBuffer, this.cursor);
@@ -335,7 +337,7 @@ export class BinaryWriter {
   }
 
   stringOfVarUInt32(v: string) {
-    return this.hpsEnable
+    return globalThis.isOneByteString
       ? this.stringOfVarUInt32Fast(v)
       : this.stringOfVarUInt32Slow(v);
   }

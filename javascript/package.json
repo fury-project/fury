@@ -1,14 +1,13 @@
 {
   "scripts": {
     "test": "npm run build && jest",
-    "clear": "rm -rf ./packages/fury/dist && rm -rf ./packages/hps/dist",
-    "build": "npm run clear && npm run build -w packages/fury -w packages/hps",
+    "clear": "rm -rf ./packages/fury/dist",
+    "build": "npm run clear && npm run build -w packages/fury",
     "lint": "eslint .",
     "lint-fix": "eslint . --fix"
   },
   "repository": "git@github.com:apache/fury.git",
   "workspaces": [
-    "packages/hps",
     "packages/fury"
   ],
   "devDependencies": {

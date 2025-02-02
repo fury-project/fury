@@ -19,9 +19,8 @@
 
 const Fury = require("@furyjs/fury");
 const beautify = require("js-beautify");
-const hps = require('@furyjs/hps');
 const fury = new Fury.default({
-  hps, refTracking: false, useSliceString: true, hooks: {
+  refTracking: false, useSliceString: true, hooks: {
     afterCodeGenerated: (code) => {
       return beautify.js(code, { indent_size: 2, space_in_empty_paren: true, indent_empty_lines: true });
     }

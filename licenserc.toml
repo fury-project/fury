@@ -54,7 +54,6 @@ excludes = [
     "java/fury-core/src/main/java/org/apache/fury/util/Preconditions.java",
     "java/fury-core/src/test/java/org/apache/fury/type/GenericsTest.java",
     "java/fury-format/src/main/java/org/apache/fury/format/vectorized/ArrowWriter.java",
-    "javascript/packages/hps/src/v8-fast-api-calls.h",
     "javascript/packages/fury/lib/murmurHash3.ts",
     "cpp/fury/thirdparty/MurmurHash3.*",
 ]

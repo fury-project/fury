@@ -95,18 +95,12 @@ export const HalfMinInt32 = MinInt32 / 2;
 export const LATIN1 = 0;
 export const UTF8 = 1;
 
-export interface Hps {
-  isLatin1: (str: string) => boolean;
-  stringCopy: (str: string, dist: Uint8Array, offset: number) => void;
-}
-
 export enum Mode {
   SchemaConsistent,
   Compatible,
 }
 
 export interface Config {
-  hps?: Hps;
   refTracking?: boolean;
   useSliceString?: boolean;
   hooks?: {
