@@ -436,8 +436,11 @@ public class FuryTest extends FuryTestBase {
 
   @Test
   public void testIgnoreFields() {
-    Fury fury = Fury.builder().requireClassRegistration(false).build();
-    IgnoreFields o = serDe(fury, new IgnoreFields(1, 2, 3));
+    Fury fury = Fury.builder().requireClassRegistration(false).withCodegen(false).build();
+      ImmutableMap<String, Integer> map1 = ImmutableMap.of("1", 1);
+      ImmutableMap<String, Integer> map2 = ImmutableMap.of("2", 2);
+      ExposeFields o = serDe(fury, new ExposeFields(1, 2, 3, map1, map2));
+    IgnoreFields o1 = serDe(fury, new IgnoreFields(1, 2, 3));
     assertEquals(0, o.f1);
     assertEquals(0, o.f2);
     assertEquals(3, o.f3);

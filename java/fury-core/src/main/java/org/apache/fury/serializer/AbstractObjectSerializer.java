@@ -22,6 +22,7 @@ package org.apache.fury.serializer;
 import static org.apache.fury.type.DescriptorGrouper.createDescriptorGrouper;
 import static org.apache.fury.type.TypeUtils.getRawType;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -31,6 +32,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.fury.Fury;
+import org.apache.fury.annotation.FieldInfo;
 import org.apache.fury.collection.Tuple2;
 import org.apache.fury.collection.Tuple3;
 import org.apache.fury.memory.Platform;
@@ -413,6 +415,7 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
     protected final short classId;
     protected final String qualifiedFieldName;
     protected final FieldAccessor fieldAccessor;
+    protected FieldInfo fieldInfo;
 
     private InternalFieldInfo(
         short classId, String qualifiedFieldName, FieldAccessor fieldAccessor) {

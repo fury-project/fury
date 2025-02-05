@@ -697,6 +697,25 @@ public final class Fury implements BaseFury {
     }
   }
 
+  public void writeJavaStringRef(MemoryBuffer buffer, String str, boolean refTracking, boolean nullable) {
+      if (refTracking) {
+        if (!refResolver.writeRefOrNull(buffer, str)) {
+          stringSerializer.writeJavaString(buffer, str);
+        }
+      } else {
+          if (nullable) {
+              if (str == null) {
+                  buffer.writeByte(Fury.NULL_FLAG);
+              } else {
+                  buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
+                  stringSerializer.write(buffer, str);
+              }
+          } else {
+              stringSerializer.write(buffer, str);
+          }
+      }
+  }
+
   public String readJavaStringRef(MemoryBuffer buffer) {
     RefResolver refResolver = this.refResolver;
     if (stringSerializer.needToWriteRef()) {
@@ -932,15 +951,6 @@ public final class Fury implements BaseFury {
       return null;
     } else {
       return readNonRef(buffer);
-    }
-  }
-
-  public Object readNullable(MemoryBuffer buffer, ClassInfoHolder classInfoHolder) {
-    byte headFlag = buffer.readByte();
-    if (headFlag == Fury.NULL_FLAG) {
-      return null;
-    } else {
-      return readNonRef(buffer, classInfoHolder);
     }
   }
 
