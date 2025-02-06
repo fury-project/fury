@@ -717,7 +717,8 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
         fieldAccessor.set(targetObject, buffer.readFloat64());
         return false;
       case ClassResolver.STRING_CLASS_ID:
-        fieldAccessor.putObject(targetObject, fury.readJavaStringRef(buffer, fieldInfo == null || fieldInfo.nullable));
+        fieldAccessor.putObject(
+            targetObject, fury.readJavaStringRef(buffer, fieldInfo == null || fieldInfo.nullable));
         return false;
       default:
         {
@@ -764,7 +765,9 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
         return false;
       case ClassResolver.STRING_CLASS_ID:
         Platform.putObject(
-            targetObject, fieldOffset, fury.readJavaStringRef(buffer, fieldInfo == null || fieldInfo.nullable));
+            targetObject,
+            fieldOffset,
+            fury.readJavaStringRef(buffer, fieldInfo == null || fieldInfo.nullable));
         return false;
       default:
         {
