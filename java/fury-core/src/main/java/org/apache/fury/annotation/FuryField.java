@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
-public @interface FieldInfo {
+public @interface FuryField {
 
   /** Whether field is nullable. */
   boolean nullable() default true;

@@ -54,7 +54,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.fury.annotation.Expose;
-import org.apache.fury.annotation.FieldInfo;
+import org.apache.fury.annotation.FuryField;
 import org.apache.fury.annotation.Ignore;
 import org.apache.fury.builder.Generated;
 import org.apache.fury.config.CompatibleMode;
@@ -438,31 +438,31 @@ public class FuryTest extends FuryTestBase {
 
   @Data
   private static class FieldsInfoAnnotationClass {
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     Integer i1 = Integer.valueOf(1);
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     String s = "str";
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     Short shortValue = Short.valueOf((short) 2);
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     Byte byteValue = Byte.valueOf((byte) 3);
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     Long longValue = Long.valueOf(4L);
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     Boolean booleanValue = Boolean.TRUE;
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     Float floatValue = Float.valueOf(5.0f);
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     Double doubleValue = Double.valueOf(6.0);
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     Character character = Character.valueOf('c');
 
     int i2;
@@ -479,7 +479,7 @@ public class FuryTest extends FuryTestBase {
 
     byte byte1;
 
-    @FieldInfo(nullable = false)
+    @FuryField(nullable = false)
     List<Integer> integerList = Lists.newArrayList(1);
   }
 

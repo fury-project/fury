@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.apache.fury.Fury;
-import org.apache.fury.annotation.FieldInfo;
 import org.apache.fury.collection.IdentityObjectIntMap;
 import org.apache.fury.collection.LongMap;
 import org.apache.fury.collection.MapEntry;

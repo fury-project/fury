@@ -31,7 +31,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.fury.Fury;
-import org.apache.fury.annotation.FieldInfo;
+import org.apache.fury.annotation.FuryField;
 import org.apache.fury.collection.Tuple2;
 import org.apache.fury.collection.Tuple3;
 import org.apache.fury.memory.Platform;
@@ -379,7 +379,7 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
                   : null,
               fury,
               descriptor.getField() != null
-                  ? descriptor.getField().getAnnotation(FieldInfo.class)
+                  ? descriptor.getField().getAnnotation(FuryField.class)
                   : null);
       otherFields[cnt++] = genericTypeField;
     }
@@ -403,7 +403,7 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
         // `d.getField()` will be null when peer class doesn't have this field.
         d.getField() != null ? FieldAccessor.createAccessor(d.getField()) : null,
         fury,
-        d.getField() != null ? d.getField().getAnnotation(FieldInfo.class) : null);
+        d.getField() != null ? d.getField().getAnnotation(FuryField.class) : null);
   }
 
   private static GenericTypeField buildContainerField(Fury fury, Descriptor d) {
@@ -412,7 +412,7 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
         d.getDeclaringClass() + "." + d.getName(),
         d.getField() != null ? FieldAccessor.createAccessor(d.getField()) : null,
         fury,
-        d.getField() != null ? d.getField().getAnnotation(FieldInfo.class) : null);
+        d.getField() != null ? d.getField().getAnnotation(FuryField.class) : null);
   }
 
   public static class InternalFieldInfo {
@@ -425,11 +425,11 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
         short classId,
         String qualifiedFieldName,
         FieldAccessor fieldAccessor,
-        FieldInfo fieldInfo) {
+        FuryField furyField) {
       this.classId = classId;
       this.qualifiedFieldName = qualifiedFieldName;
       this.fieldAccessor = fieldAccessor;
-      this.nullable = fieldInfo == null || fieldInfo.nullable();
+      this.nullable = furyField == null || furyField.nullable();
     }
 
     @Override
@@ -451,8 +451,8 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
     final ClassInfo classInfo;
 
     private FinalTypeField(
-        Class<?> type, String fieldName, FieldAccessor accessor, Fury fury, FieldInfo fieldInfo) {
-      super(getRegisteredClassId(fury, type), fieldName, accessor, fieldInfo);
+        Class<?> type, String fieldName, FieldAccessor accessor, Fury fury, FuryField furyField) {
+      super(getRegisteredClassId(fury, type), fieldName, accessor, furyField);
       // invoke `copy` to avoid ObjectSerializer construct clear serializer by `clearSerializer`.
       if (type == FinalObjectTypeStub.class) {
         // `FinalObjectTypeStub` has no fields, using its `classInfo`
@@ -474,8 +474,8 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
         String qualifiedFieldName,
         FieldAccessor accessor,
         Fury fury,
-        FieldInfo fieldInfo) {
-      super(getRegisteredClassId(fury, cls), qualifiedFieldName, accessor, fieldInfo);
+        FuryField furyField) {
+      super(getRegisteredClassId(fury, cls), qualifiedFieldName, accessor, furyField);
       // TODO support generics <T> in Pojo<T>, see ComplexObjectSerializer.getGenericTypes
       genericType = fury.getClassResolver().buildGenericType(cls);
       classInfoHolder = fury.getClassResolver().nilClassInfoHolder();
@@ -487,9 +487,9 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
         String qualifiedFieldName,
         FieldAccessor accessor,
         Fury fury,
-        FieldInfo fieldInfo) {
+        FuryField furyField) {
       super(
-          getRegisteredClassId(fury, getRawType(typeRef)), qualifiedFieldName, accessor, fieldInfo);
+          getRegisteredClassId(fury, getRawType(typeRef)), qualifiedFieldName, accessor, furyField);
       // TODO support generics <T> in Pojo<T>, see ComplexObjectSerializer.getGenericTypes
       genericType = fury.getClassResolver().buildGenericType(typeRef);
       classInfoHolder = fury.getClassResolver().nilClassInfoHolder();

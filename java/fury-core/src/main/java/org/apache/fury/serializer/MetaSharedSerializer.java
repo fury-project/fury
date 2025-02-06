@@ -24,7 +24,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.fury.Fury;
-import org.apache.fury.annotation.FieldInfo;
 import org.apache.fury.builder.MetaSharedCodecBuilder;
 import org.apache.fury.collection.Tuple2;
 import org.apache.fury.collection.Tuple3;

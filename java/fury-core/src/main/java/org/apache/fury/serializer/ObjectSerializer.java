@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.fury.Fury;
-import org.apache.fury.annotation.FieldInfo;
 import org.apache.fury.collection.Tuple2;
 import org.apache.fury.collection.Tuple3;
 import org.apache.fury.exception.FuryException;
