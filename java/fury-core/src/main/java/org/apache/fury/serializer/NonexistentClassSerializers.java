@@ -196,7 +196,6 @@ public final class NonexistentClassSerializers {
       boolean[] isFinal = fieldsInfo.isFinal;
       for (int i = 0; i < finalFields.length; i++) {
         ObjectSerializer.FinalTypeField fieldInfo = finalFields[i];
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
         Object fieldValue;
         if (fieldInfo.classInfo == null) {
           // TODO(chaokunyang) support registered serializer in peer with ref tracking disabled.
@@ -212,24 +211,21 @@ public final class NonexistentClassSerializers {
                     classResolver,
                     fieldInfo,
                     isFinal[i],
-                    buffer,
-                    fieldInfoAnnotation);
+                    buffer);
           }
         }
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       for (ObjectSerializer.GenericTypeField fieldInfo : fieldsInfo.otherFields) {
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
         Object fieldValue =
-            ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer, fieldInfoAnnotation);
+            ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       Generics generics = fury.getGenerics();
       for (ObjectSerializer.GenericTypeField fieldInfo : fieldsInfo.containerFields) {
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
         Object fieldValue =
             ObjectSerializer.readContainerFieldValue(
-                fury, generics, fieldInfo, buffer, fieldInfoAnnotation);
+                fury, generics, fieldInfo, buffer);
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       obj.setEntries(entries);

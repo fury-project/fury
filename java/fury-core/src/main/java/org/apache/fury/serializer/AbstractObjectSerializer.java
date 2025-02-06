@@ -419,7 +419,7 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
     protected final short classId;
     protected final String qualifiedFieldName;
     protected final FieldAccessor fieldAccessor;
-    protected FieldInfo fieldInfo;
+    protected boolean nullable;
 
     private InternalFieldInfo(
         short classId,
@@ -429,7 +429,7 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
       this.classId = classId;
       this.qualifiedFieldName = qualifiedFieldName;
       this.fieldAccessor = fieldAccessor;
-      this.fieldInfo = fieldInfo;
+      this.nullable = fieldInfo == null || fieldInfo.nullable();
     }
 
     @Override
@@ -441,8 +441,8 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
           + qualifiedFieldName
           + ", field="
           + (fieldAccessor != null ? fieldAccessor.getField() : null)
-          + ", fieldInfo="
-          + fieldInfo
+          + ", nullable="
+          + nullable
           + '}';
     }
   }
@@ -507,8 +507,8 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
           + qualifiedFieldName
           + ", field="
           + (fieldAccessor != null ? fieldAccessor.getField() : null)
-          + ", fieldInfo="
-          + fieldInfo
+          + ", nullable="
+          + nullable
           + '}';
     }
   }
