@@ -484,7 +484,7 @@ public class FuryTest extends FuryTestBase {
   }
 
   @Test
-  public void testFieldsInfoAnnotation() {
+  public void testFuryFieldsAnnotation() {
     Fury fury = Fury.builder().requireClassRegistration(false).withCodegen(false).build();
     final FieldsInfoAnnotationClass s = new FieldsInfoAnnotationClass();
     FieldsInfoAnnotationClass o = serDe(fury, s);
@@ -495,8 +495,7 @@ public class FuryTest extends FuryTestBase {
 
   @Test
   public void testIgnoreFields() {
-    Fury fury = Fury.builder().requireClassRegistration(false).withCodegen(false).build();
-    IgnoreFields o = serDe(fury, new IgnoreFields(1, 2, 3));
+    Fury fury = Fury.builder().requireClassRegistration(false).build();    IgnoreFields o = serDe(fury, new IgnoreFields(1, 2, 3));
     assertEquals(0, o.f1);
     assertEquals(0, o.f2);
     assertEquals(3, o.f3);
