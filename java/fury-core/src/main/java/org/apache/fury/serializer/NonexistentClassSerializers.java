@@ -205,26 +205,19 @@ public final class NonexistentClassSerializers {
           } else {
             fieldValue =
                 ObjectSerializer.readFinalObjectFieldValue(
-                    fury,
-                    refResolver,
-                    classResolver,
-                    fieldInfo,
-                    isFinal[i],
-                    buffer);
+                    fury, refResolver, classResolver, fieldInfo, isFinal[i], buffer);
           }
         }
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       for (ObjectSerializer.GenericTypeField fieldInfo : fieldsInfo.otherFields) {
-        Object fieldValue =
-            ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
+        Object fieldValue = ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       Generics generics = fury.getGenerics();
       for (ObjectSerializer.GenericTypeField fieldInfo : fieldsInfo.containerFields) {
         Object fieldValue =
-            ObjectSerializer.readContainerFieldValue(
-                fury, generics, fieldInfo, buffer);
+            ObjectSerializer.readContainerFieldValue(fury, generics, fieldInfo, buffer);
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       obj.setEntries(entries);

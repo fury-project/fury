@@ -157,12 +157,7 @@ public class MetaSharedSerializer<T> extends AbstractObjectSerializer<T> {
           assert fieldInfo.classInfo != null;
           Object fieldValue =
               ObjectSerializer.readFinalObjectFieldValue(
-                  fury,
-                  refResolver,
-                  classResolver,
-                  fieldInfo,
-                  isFinal,
-                  buffer);
+                  fury, refResolver, classResolver, fieldInfo, isFinal, buffer);
           fieldAccessor.putObject(obj, fieldValue);
         }
       } else {
@@ -178,8 +173,7 @@ public class MetaSharedSerializer<T> extends AbstractObjectSerializer<T> {
       }
     }
     for (ObjectSerializer.GenericTypeField fieldInfo : otherFields) {
-      Object fieldValue =
-          ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
+      Object fieldValue = ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
       FieldAccessor fieldAccessor = fieldInfo.fieldAccessor;
       if (fieldAccessor != null) {
         fieldAccessor.putObject(obj, fieldValue);
@@ -188,8 +182,7 @@ public class MetaSharedSerializer<T> extends AbstractObjectSerializer<T> {
     Generics generics = fury.getGenerics();
     for (ObjectSerializer.GenericTypeField fieldInfo : containerFields) {
       Object fieldValue =
-          ObjectSerializer.readContainerFieldValue(
-              fury, generics, fieldInfo, buffer);
+          ObjectSerializer.readContainerFieldValue(fury, generics, fieldInfo, buffer);
       FieldAccessor fieldAccessor = fieldInfo.fieldAccessor;
       if (fieldAccessor != null) {
         fieldAccessor.putObject(obj, fieldValue);
@@ -218,12 +211,7 @@ public class MetaSharedSerializer<T> extends AbstractObjectSerializer<T> {
         } else {
           Object fieldValue =
               ObjectSerializer.readFinalObjectFieldValue(
-                  fury,
-                  refResolver,
-                  classResolver,
-                  fieldInfo,
-                  isFinal,
-                  buffer);
+                  fury, refResolver, classResolver, fieldInfo, isFinal, buffer);
           fields[counter++] = fieldValue;
         }
       } else {
@@ -240,15 +228,13 @@ public class MetaSharedSerializer<T> extends AbstractObjectSerializer<T> {
       }
     }
     for (ObjectSerializer.GenericTypeField fieldInfo : otherFields) {
-      Object fieldValue =
-          ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
+      Object fieldValue = ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
       fields[counter++] = fieldValue;
     }
     Generics generics = fury.getGenerics();
     for (ObjectSerializer.GenericTypeField fieldInfo : containerFields) {
       Object fieldValue =
-          ObjectSerializer.readContainerFieldValue(
-              fury, generics, fieldInfo, buffer);
+          ObjectSerializer.readContainerFieldValue(fury, generics, fieldInfo, buffer);
       fields[counter++] = fieldValue;
     }
   }

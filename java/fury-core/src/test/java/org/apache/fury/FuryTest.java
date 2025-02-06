@@ -495,7 +495,8 @@ public class FuryTest extends FuryTestBase {
 
   @Test
   public void testIgnoreFields() {
-    Fury fury = Fury.builder().requireClassRegistration(false).build();    IgnoreFields o = serDe(fury, new IgnoreFields(1, 2, 3));
+    Fury fury = Fury.builder().requireClassRegistration(false).build();
+    IgnoreFields o = serDe(fury, new IgnoreFields(1, 2, 3));
     assertEquals(0, o.f1);
     assertEquals(0, o.f2);
     assertEquals(3, o.f3);
