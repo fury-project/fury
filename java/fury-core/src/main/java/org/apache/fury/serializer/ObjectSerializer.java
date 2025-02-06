@@ -21,7 +21,6 @@ package org.apache.fury.serializer;
 
 import static org.apache.fury.type.DescriptorGrouper.createDescriptorGrouper;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -136,21 +135,33 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
     }
     // write order: primitive,boxed,final,other,collection,map
     writeFinalFields(buffer, value, fury, refResolver, classResolver);
+    writeOtherFields(buffer, value, fury, refResolver, classResolver);
+    writeContainerFields(buffer, value, fury, refResolver, classResolver);
+  }
+
+  private void writeOtherFields(
+      MemoryBuffer buffer,
+      T value,
+      Fury fury,
+      RefResolver refResolver,
+      ClassResolver classResolver) {
     for (GenericTypeField fieldInfo : otherFields) {
       FieldAccessor fieldAccessor = fieldInfo.fieldAccessor;
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
-        Object fieldValue = fieldAccessor.getObject(value);
+      FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+      Object fieldValue = fieldAccessor.getObject(value);
       if (fieldInfo.trackingRef) {
         fury.writeRef(buffer, fieldValue, fieldInfo.classInfoHolder);
       } else {
-          if (fieldInfoAnnotation != null && !fieldInfoAnnotation.nullable()) {
-              fury.writeNonRef(buffer, fieldValue, classResolver.getClassInfo(fieldValue.getClass(), fieldInfo.classInfoHolder));
-          } else {
-              fury.writeNullable(buffer, fieldValue, fieldInfo.classInfoHolder);
-          }
+        if (fieldInfoAnnotation != null && !fieldInfoAnnotation.nullable()) {
+          fury.writeNonRef(
+              buffer,
+              fieldValue,
+              classResolver.getClassInfo(fieldValue.getClass(), fieldInfo.classInfoHolder));
+        } else {
+          fury.writeNullable(buffer, fieldValue, fieldInfo.classInfoHolder);
+        }
       }
     }
-    writeContainerFields(buffer, value, fury, refResolver, classResolver);
   }
 
   private void writeFinalFields(
@@ -167,14 +178,9 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       short classId = fieldInfo.classId;
       if (writePrimitiveFieldValueFailed(fury, buffer, value, fieldAccessor, classId)) {
         Object fieldValue = fieldAccessor.getObject(value);
-        final FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
-          boolean nullable = true;
-          boolean trackingRef = false;
-          if (fieldInfoAnnotation != null) {
-              nullable = fieldInfoAnnotation.nullable();
-              trackingRef = fieldInfoAnnotation.trackingRef();
-          }
-        if (writeBasicObjectFieldValueFailed(fury, buffer, fieldValue, classId, trackingRef, nullable)) {
+        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+        if (writeBasicObjectFieldValueFailed(
+            fury, buffer, fieldValue, classId, fieldInfoAnnotation)) {
           Serializer<Object> serializer = fieldInfo.classInfo.getSerializer();
           if (!metaShareEnabled || isFinal[i]) {
             // whether tracking ref is recorded in `fieldInfo.serializer`, so it's still
@@ -188,11 +194,15 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
                 serializer.write(buffer, fieldValue);
               }
             } else {
-                if (nullable) {
-                  fury.writeNullable(buffer, fieldValue, fieldInfo.classInfo);
-                } else {
-                    fury.writeNonRef(buffer, fieldValue, fieldInfo.classInfo);
-                }
+              boolean nullable = true;
+              if (fieldInfoAnnotation != null) {
+                nullable = fieldInfoAnnotation.nullable();
+              }
+              if (nullable) {
+                fury.writeNullable(buffer, fieldValue, fieldInfo.classInfo);
+              } else {
+                fury.writeNonRef(buffer, fieldValue, fieldInfo.classInfo);
+              }
             }
           }
         }
@@ -223,13 +233,11 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       GenericTypeField fieldInfo,
       MemoryBuffer buffer,
       Object fieldValue) {
-      final FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
-      boolean trackingRef = false;
-      boolean nullable = true;
-      if (fieldInfoAnnotation != null) {
-        nullable = fieldInfoAnnotation.nullable();
-        trackingRef = fieldInfoAnnotation.trackingRef();
-      }
+    final FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+    boolean nullable = true;
+    if (fieldInfoAnnotation != null) {
+      nullable = fieldInfoAnnotation.nullable();
+    }
     if (fieldInfo.trackingRef) {
       if (!refResolver.writeRefOrNull(buffer, fieldValue)) {
         ClassInfo classInfo =
@@ -239,32 +247,39 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
         generics.popGenericType();
       }
     } else {
-        if (nullable) {
-            writeContainerFieldValueNullable(buffer, fury, fieldInfo, generics, classResolver, fieldValue);
-        } else {
-            generics.pushGenericType(fieldInfo.genericType);
-            fury.writeNonRef(
-                    buffer,
-                    fieldValue,
-                    classResolver.getClassInfo(fieldValue.getClass(), fieldInfo.classInfoHolder));
-            generics.popGenericType();
-        }
+      if (nullable) {
+        writeContainerFieldValueNullable(
+            buffer, fury, fieldInfo, generics, classResolver, fieldValue);
+      } else {
+        generics.pushGenericType(fieldInfo.genericType);
+        fury.writeNonRef(
+            buffer,
+            fieldValue,
+            classResolver.getClassInfo(fieldValue.getClass(), fieldInfo.classInfoHolder));
+        generics.popGenericType();
+      }
     }
   }
 
-    private static void writeContainerFieldValueNullable(MemoryBuffer buffer, Fury fury, GenericTypeField fieldInfo, Generics generics, ClassResolver classResolver, Object fieldValue) {
-        if (fieldValue == null) {
-            buffer.writeByte(Fury.NULL_FLAG);
-        } else {
-            buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
-            generics.pushGenericType(fieldInfo.genericType);
-            fury.writeNonRef(
-                    buffer,
-                    fieldValue,
-                    classResolver.getClassInfo(fieldValue.getClass(), fieldInfo.classInfoHolder));
-            generics.popGenericType();
-        }
+  private static void writeContainerFieldValueNullable(
+      MemoryBuffer buffer,
+      Fury fury,
+      GenericTypeField fieldInfo,
+      Generics generics,
+      ClassResolver classResolver,
+      Object fieldValue) {
+    if (fieldValue == null) {
+      buffer.writeByte(Fury.NULL_FLAG);
+    } else {
+      buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
+      generics.pushGenericType(fieldInfo.genericType);
+      fury.writeNonRef(
+          buffer,
+          fieldValue,
+          classResolver.getClassInfo(fieldValue.getClass(), fieldInfo.classInfoHolder));
+      generics.popGenericType();
     }
+  }
 
   @Override
   public T read(MemoryBuffer buffer) {
@@ -300,27 +315,29 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
     boolean metaShareEnabled = fury.getConfig().isMetaShareEnabled();
     for (int i = 0; i < finalFields.length; i++) {
       FinalTypeField fieldInfo = finalFields[i];
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
-        boolean isFinal = !metaShareEnabled || this.isFinal[i];
+      FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+      boolean isFinal = !metaShareEnabled || this.isFinal[i];
       short classId = fieldInfo.classId;
       if (classId >= ClassResolver.PRIMITIVE_BOOLEAN_CLASS_ID
           && classId <= ClassResolver.PRIMITIVE_DOUBLE_CLASS_ID) {
         fieldValues[counter++] = Serializers.readPrimitiveValue(fury, buffer, classId);
       } else {
         Object fieldValue =
-            readFinalObjectFieldValue(fury, refResolver, classResolver, fieldInfo, isFinal, buffer, fieldInfoAnnotation);
+            readFinalObjectFieldValue(
+                fury, refResolver, classResolver, fieldInfo, isFinal, buffer, fieldInfoAnnotation);
         fieldValues[counter++] = fieldValue;
       }
     }
     for (GenericTypeField fieldInfo : otherFields) {
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
-        Object fieldValue = readOtherFieldValue(fury, fieldInfo, buffer, fieldInfoAnnotation);
+      FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+      Object fieldValue = readOtherFieldValue(fury, fieldInfo, buffer, fieldInfoAnnotation);
       fieldValues[counter++] = fieldValue;
     }
     Generics generics = fury.getGenerics();
     for (GenericTypeField fieldInfo : containerFields) {
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
-        Object fieldValue = readContainerFieldValue(fury, generics, fieldInfo, buffer, fieldInfoAnnotation);
+      FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+      Object fieldValue =
+          readContainerFieldValue(fury, generics, fieldInfo, buffer, fieldInfoAnnotation);
       fieldValues[counter++] = fieldValue;
     }
     return fieldValues;
@@ -341,25 +358,29 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       FinalTypeField fieldInfo = finalFields[i];
       boolean isFinal = !metaShareEnabled || this.isFinal[i];
       FieldAccessor fieldAccessor = fieldInfo.fieldAccessor;
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
-        short classId = fieldInfo.classId;
-      if (readPrimitiveFieldValueFailed(fury, buffer, obj, fieldAccessor, classId)
-          && readBasicObjectFieldValueFailed(fury, buffer, obj, fieldAccessor, classId, fieldInfoAnnotation)) {
+      FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+      short classId = fieldInfo.classId;
+      if (readPrimitiveFieldValueFailed(
+              fury, buffer, obj, fieldAccessor, classId, fieldInfoAnnotation)
+          && readBasicObjectFieldValueFailed(
+              fury, buffer, obj, fieldAccessor, classId, fieldInfoAnnotation)) {
         Object fieldValue =
-            readFinalObjectFieldValue(fury, refResolver, classResolver, fieldInfo, isFinal, buffer, fieldInfoAnnotation);
+            readFinalObjectFieldValue(
+                fury, refResolver, classResolver, fieldInfo, isFinal, buffer, fieldInfoAnnotation);
         fieldAccessor.putObject(obj, fieldValue);
       }
     }
     for (GenericTypeField fieldInfo : otherFields) {
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+      FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
       Object fieldValue = readOtherFieldValue(fury, fieldInfo, buffer, fieldInfoAnnotation);
       FieldAccessor fieldAccessor = fieldInfo.fieldAccessor;
       fieldAccessor.putObject(obj, fieldValue);
     }
     Generics generics = fury.getGenerics();
     for (GenericTypeField fieldInfo : containerFields) {
-        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
-        Object fieldValue = readContainerFieldValue(fury, generics, fieldInfo, buffer, fieldInfoAnnotation);
+      FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+      Object fieldValue =
+          readContainerFieldValue(fury, generics, fieldInfo, buffer, fieldInfoAnnotation);
       FieldAccessor fieldAccessor = fieldInfo.fieldAccessor;
       fieldAccessor.putObject(obj, fieldValue);
     }
@@ -376,7 +397,8 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       ClassResolver classResolver,
       FinalTypeField fieldInfo,
       boolean isFinal,
-      MemoryBuffer buffer, FieldInfo fieldInfoAnnotation) {
+      MemoryBuffer buffer,
+      FieldInfo fieldInfoAnnotation) {
     Serializer<Object> serializer = fieldInfo.classInfo.getSerializer();
     Object fieldValue;
     if (isFinal) {
@@ -394,63 +416,68 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
           fieldValue = refResolver.getReadObject();
         }
       } else {
-          if (fieldInfoAnnotation != null && !fieldInfoAnnotation.nullable()) {
-            fieldValue = serializer.read(buffer);
+        if (fieldInfoAnnotation != null && !fieldInfoAnnotation.nullable()) {
+          fieldValue = serializer.read(buffer);
+        } else {
+          byte headFlag = buffer.readByte();
+          if (headFlag == Fury.NULL_FLAG) {
+            fieldValue = null;
           } else {
-              byte headFlag = buffer.readByte();
-              if (headFlag == Fury.NULL_FLAG) {
-                  fieldValue = null;
-              } else {
-                  classResolver.readClassInfo(buffer, fieldInfo.classInfo);
-                  fieldValue = serializer.read(buffer);
-              }
+            classResolver.readClassInfo(buffer, fieldInfo.classInfo);
+            fieldValue = serializer.read(buffer);
           }
+        }
       }
     }
     return fieldValue;
   }
 
-  static Object readOtherFieldValue(Fury fury, GenericTypeField fieldInfo, MemoryBuffer buffer, FieldInfo fieldInfoAnnotation) {
+  static Object readOtherFieldValue(
+      Fury fury, GenericTypeField fieldInfo, MemoryBuffer buffer, FieldInfo fieldInfoAnnotation) {
     Object fieldValue;
     if (fieldInfo.trackingRef) {
       fieldValue = fury.readRef(buffer, fieldInfo.classInfoHolder);
     } else {
-        if (fieldInfoAnnotation != null && !fieldInfoAnnotation.nullable()) {
-            fieldValue = fury.readNonRef(buffer, fieldInfo.classInfoHolder);
+      if (fieldInfoAnnotation != null && !fieldInfoAnnotation.nullable()) {
+        fieldValue = fury.readNonRef(buffer, fieldInfo.classInfoHolder);
+      } else {
+        byte headFlag = buffer.readByte();
+        if (headFlag == Fury.NULL_FLAG) {
+          fieldValue = null;
         } else {
-            byte headFlag = buffer.readByte();
-            if (headFlag == Fury.NULL_FLAG) {
-                fieldValue = null;
-            } else {
-                fieldValue = fury.readNonRef(buffer, fieldInfo.classInfoHolder);
-            }
+          fieldValue = fury.readNonRef(buffer, fieldInfo.classInfoHolder);
         }
+      }
     }
     return fieldValue;
   }
 
   static Object readContainerFieldValue(
-      Fury fury, Generics generics, GenericTypeField fieldInfo, MemoryBuffer buffer, FieldInfo fieldInfoAnnotation) {
+      Fury fury,
+      Generics generics,
+      GenericTypeField fieldInfo,
+      MemoryBuffer buffer,
+      FieldInfo fieldInfoAnnotation) {
     Object fieldValue;
     if (fieldInfo.trackingRef) {
       generics.pushGenericType(fieldInfo.genericType);
       fieldValue = fury.readRef(buffer, fieldInfo.classInfoHolder);
       generics.popGenericType();
     } else {
-        if (fieldInfoAnnotation != null && !fieldInfoAnnotation.nullable()) {
-            generics.pushGenericType(fieldInfo.genericType);
-            fieldValue = fury.readNonRef(buffer, fieldInfo.classInfoHolder);
-            generics.popGenericType();
+      if (fieldInfoAnnotation != null && !fieldInfoAnnotation.nullable()) {
+        generics.pushGenericType(fieldInfo.genericType);
+        fieldValue = fury.readNonRef(buffer, fieldInfo.classInfoHolder);
+        generics.popGenericType();
+      } else {
+        byte headFlag = buffer.readByte();
+        if (headFlag == Fury.NULL_FLAG) {
+          fieldValue = null;
         } else {
-            byte headFlag = buffer.readByte();
-            if (headFlag == Fury.NULL_FLAG) {
-                fieldValue = null;
-            } else {
-                generics.pushGenericType(fieldInfo.genericType);
-                fieldValue = fury.readNonRef(buffer, fieldInfo.classInfoHolder);
-                generics.popGenericType();
-            }
+          generics.pushGenericType(fieldInfo.genericType);
+          fieldValue = fury.readNonRef(buffer, fieldInfo.classInfoHolder);
+          generics.popGenericType();
         }
+      }
     }
     return fieldValue;
   }
@@ -553,81 +580,73 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
    * @return true if field value isn't written by this function.
    */
   static boolean writeBasicObjectFieldValueFailed(
-      Fury fury, MemoryBuffer buffer, Object fieldValue, short classId, boolean trackingRef, boolean nullable) {
+      Fury fury,
+      MemoryBuffer buffer,
+      Object fieldValue,
+      short classId,
+      FieldInfo fieldInfoAnnotation) {
     if (!fury.isBasicTypesRefIgnored()) {
       return true; // let common path handle this.
     }
-      // add time types serialization here.
+    boolean nullable = true;
+    if (fieldInfoAnnotation != null) {
+      nullable = fieldInfoAnnotation.nullable();
+    }
+    // add time types serialization here.
     switch (classId) {
-      case ClassResolver.STRING_CLASS_ID: // fastpath for string.
-        fury.writeJavaStringRef(buffer, (String) (fieldValue), trackingRef, nullable);
+      case ClassResolver.STRING_CLASS_ID: // fast path for string.
+        fury.writeJavaStringRef(buffer, (String) (fieldValue), nullable);
         return false;
       case ClassResolver.BOOLEAN_CLASS_ID:
-        if (!nullable) {
-          buffer.writeBoolean((Boolean) (fieldValue));
-          return false;
-        }
-        {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
             buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
             buffer.writeBoolean((Boolean) (fieldValue));
           }
-          return false;
+        } else {
+          buffer.writeBoolean((Boolean) (fieldValue));
         }
+        return false;
       case ClassResolver.BYTE_CLASS_ID:
-        if (!nullable) {
-          buffer.writeByte((Byte) (fieldValue));
-          return false;
-        }
-        {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
             buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
             buffer.writeByte((Byte) (fieldValue));
           }
-          return false;
+        } else {
+          buffer.writeByte((Byte) (fieldValue));
         }
+        return false;
       case ClassResolver.CHAR_CLASS_ID:
-        if (!nullable) {
-          buffer.writeChar((Character) (fieldValue));
-          return false;
-        }
-        {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
             buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
             buffer.writeChar((Character) (fieldValue));
           }
-          return false;
+        } else {
+          buffer.writeChar((Character) (fieldValue));
         }
+        return false;
       case ClassResolver.SHORT_CLASS_ID:
-        if (!nullable) {
-          buffer.writeInt16((Short) (fieldValue));
-          return false;
-        }
-        {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
             buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
             buffer.writeInt16((Short) (fieldValue));
           }
-          return false;
+        } else {
+          buffer.writeInt16((Short) (fieldValue));
         }
+        return false;
       case ClassResolver.INTEGER_CLASS_ID:
-        if (!nullable) {
-          if (fury.compressInt()) {
-            buffer.writeVarInt32((Integer) (fieldValue));
-          } else {
-            buffer.writeInt32((Integer) (fieldValue));
-          }
-          return false;
-        }
-        {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
@@ -638,50 +657,50 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
               buffer.writeInt32((Integer) (fieldValue));
             }
           }
-          return false;
+        } else {
+          if (fury.compressInt()) {
+            buffer.writeVarInt32((Integer) (fieldValue));
+          } else {
+            buffer.writeInt32((Integer) (fieldValue));
+          }
         }
+        return false;
       case ClassResolver.FLOAT_CLASS_ID:
-        if (!nullable) {
-          buffer.writeFloat32((Float) (fieldValue));
-          return false;
-        }
-        {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
             buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
             buffer.writeFloat32((Float) (fieldValue));
           }
-          return false;
+        } else {
+          buffer.writeFloat32((Float) (fieldValue));
         }
+        return false;
       case ClassResolver.LONG_CLASS_ID:
-        if (!nullable) {
-          fury.writeInt64(buffer, (Long) (fieldValue));
-          return false;
-        }
-        {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
             buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
             fury.writeInt64(buffer, (Long) fieldValue);
           }
-          return false;
+        } else {
+          fury.writeInt64(buffer, (Long) (fieldValue));
         }
+        return false;
       case ClassResolver.DOUBLE_CLASS_ID:
-        if (!nullable) {
-          buffer.writeFloat64((Double) (fieldValue));
-          return false;
-        }
-        {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
             buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
             buffer.writeFloat64((Double) (fieldValue));
           }
-          return false;
+        } else {
+          buffer.writeFloat64((Double) (fieldValue));
         }
+        return false;
       default:
         return true;
     }
@@ -698,10 +717,12 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       MemoryBuffer buffer,
       Object targetObject,
       FieldAccessor fieldAccessor,
-      short classId) {
+      short classId,
+      FieldInfo fieldInfoAnnotation) {
     long fieldOffset = fieldAccessor.getFieldOffset();
     if (fieldOffset != -1) {
-      return readPrimitiveFieldValueFailed(fury, buffer, targetObject, fieldOffset, classId);
+      return readPrimitiveFieldValueFailed(
+          fury, buffer, targetObject, fieldOffset, classId, fieldInfoAnnotation);
     }
     switch (classId) {
       case ClassResolver.PRIMITIVE_BOOLEAN_CLASS_ID:
@@ -733,7 +754,10 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
         fieldAccessor.set(targetObject, buffer.readFloat64());
         return false;
       case ClassResolver.STRING_CLASS_ID:
-        fieldAccessor.putObject(targetObject, fury.readJavaStringRef(buffer));
+        fieldAccessor.putObject(
+            targetObject,
+            fury.readJavaStringRef(
+                buffer, fieldInfoAnnotation == null || fieldInfoAnnotation.nullable()));
         return false;
       default:
         {
@@ -743,7 +767,12 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
   }
 
   private static boolean readPrimitiveFieldValueFailed(
-      Fury fury, MemoryBuffer buffer, Object targetObject, long fieldOffset, short classId) {
+      Fury fury,
+      MemoryBuffer buffer,
+      Object targetObject,
+      long fieldOffset,
+      short classId,
+      FieldInfo fieldInfoAnnotation) {
     switch (classId) {
       case ClassResolver.PRIMITIVE_BOOLEAN_CLASS_ID:
         Platform.putBoolean(targetObject, fieldOffset, buffer.readBoolean());
@@ -774,7 +803,11 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
         Platform.putDouble(targetObject, fieldOffset, buffer.readFloat64());
         return false;
       case ClassResolver.STRING_CLASS_ID:
-        Platform.putObject(targetObject, fieldOffset, fury.readJavaStringRef(buffer));
+        Platform.putObject(
+            targetObject,
+            fieldOffset,
+            fury.readJavaStringRef(
+                buffer, fieldInfoAnnotation == null || fieldInfoAnnotation.nullable()));
         return false;
       default:
         {
@@ -788,83 +821,66 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       MemoryBuffer buffer,
       Object targetObject,
       FieldAccessor fieldAccessor,
-      short classId, FieldInfo fieldInfoAnnotation) {
+      short classId,
+      FieldInfo fieldInfoAnnotation) {
     if (!fury.isBasicTypesRefIgnored()) {
       return true; // let common path handle this.
     }
-    boolean trackingRef = false;
     boolean nullable = true;
     if (fieldInfoAnnotation != null) {
-      trackingRef = fieldInfoAnnotation.trackingRef();
       nullable = fieldInfoAnnotation.nullable();
     }
     // add time types serialization here.
     switch (classId) {
-      case ClassResolver.STRING_CLASS_ID: // fastpath for string.
-        fieldAccessor.putObject(targetObject, fury.readJavaStringRef(buffer));
+      case ClassResolver.STRING_CLASS_ID: // fast path for string.
+        fieldAccessor.putObject(targetObject, fury.readJavaStringRef(buffer, nullable));
         return false;
       case ClassResolver.BOOLEAN_CLASS_ID:
-        if (!nullable) {
-          fieldAccessor.putObject(targetObject, buffer.readBoolean());
-          return false;
-        }
-        {
+        if (nullable) {
           if (buffer.readByte() == Fury.NULL_FLAG) {
             fieldAccessor.putObject(targetObject, null);
           } else {
             fieldAccessor.putObject(targetObject, buffer.readBoolean());
           }
-          return false;
+        } else {
+          fieldAccessor.putObject(targetObject, buffer.readBoolean());
         }
+        return false;
       case ClassResolver.BYTE_CLASS_ID:
-        if (!nullable) {
-          fieldAccessor.putObject(targetObject, buffer.readByte());
-          return false;
-        }
-        {
+        if (nullable) {
           if (buffer.readByte() == Fury.NULL_FLAG) {
             fieldAccessor.putObject(targetObject, null);
           } else {
             fieldAccessor.putObject(targetObject, buffer.readByte());
           }
-          return false;
+        } else {
+          fieldAccessor.putObject(targetObject, buffer.readByte());
         }
+        return false;
       case ClassResolver.CHAR_CLASS_ID:
-        if (!nullable) {
-          fieldAccessor.putObject(targetObject, buffer.readChar());
-          return false;
-        }
-        {
+        if (nullable) {
           if (buffer.readByte() == Fury.NULL_FLAG) {
             fieldAccessor.putObject(targetObject, null);
           } else {
             fieldAccessor.putObject(targetObject, buffer.readChar());
           }
-          return false;
+        } else {
+          fieldAccessor.putObject(targetObject, buffer.readChar());
         }
+        return false;
       case ClassResolver.SHORT_CLASS_ID:
-        if (!nullable) {
-          fieldAccessor.putObject(targetObject, buffer.readInt16());
-          return false;
-        }
-        {
+        if (nullable) {
           if (buffer.readByte() == Fury.NULL_FLAG) {
             fieldAccessor.putObject(targetObject, null);
           } else {
             fieldAccessor.putObject(targetObject, buffer.readInt16());
           }
-          return false;
+        } else {
+          fieldAccessor.putObject(targetObject, buffer.readInt16());
         }
+        return false;
       case ClassResolver.INTEGER_CLASS_ID:
-        if (!nullable) {
-          if (fury.compressInt()) {
-            fieldAccessor.putObject(targetObject, buffer.readVarInt32());
-          } else {
-            fieldAccessor.putObject(targetObject, buffer.readInt32());
-          }
-          return false;
-        }
-        {
+        if (nullable) {
           if (buffer.readByte() == Fury.NULL_FLAG) {
             fieldAccessor.putObject(targetObject, null);
           } else {
@@ -874,47 +890,47 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
               fieldAccessor.putObject(targetObject, buffer.readInt32());
             }
           }
-          return false;
+        } else {
+          if (fury.compressInt()) {
+            fieldAccessor.putObject(targetObject, buffer.readVarInt32());
+          } else {
+            fieldAccessor.putObject(targetObject, buffer.readInt32());
+          }
         }
+        return false;
       case ClassResolver.FLOAT_CLASS_ID:
-        if (!nullable) {
-          fieldAccessor.putObject(targetObject, buffer.readFloat32());
-          return false;
-        }
-        {
+        if (nullable) {
           if (buffer.readByte() == Fury.NULL_FLAG) {
             fieldAccessor.putObject(targetObject, null);
           } else {
             fieldAccessor.putObject(targetObject, buffer.readFloat32());
           }
-          return false;
+        } else {
+          fieldAccessor.putObject(targetObject, buffer.readFloat32());
         }
+        return false;
       case ClassResolver.LONG_CLASS_ID:
-        if (!nullable) {
-          fieldAccessor.putObject(targetObject, fury.readInt64(buffer));
-          return false;
-        }
-        {
+        if (nullable) {
           if (buffer.readByte() == Fury.NULL_FLAG) {
             fieldAccessor.putObject(targetObject, null);
           } else {
             fieldAccessor.putObject(targetObject, fury.readInt64(buffer));
           }
-          return false;
+        } else {
+          fieldAccessor.putObject(targetObject, fury.readInt64(buffer));
         }
+        return false;
       case ClassResolver.DOUBLE_CLASS_ID:
-        if (!nullable) {
-          fieldAccessor.putObject(targetObject, buffer.readFloat64());
-          return false;
-        }
-        {
+        if (nullable) {
           if (buffer.readByte() == Fury.NULL_FLAG) {
             fieldAccessor.putObject(targetObject, null);
           } else {
             fieldAccessor.putObject(targetObject, buffer.readFloat64());
           }
-          return false;
+        } else {
+          fieldAccessor.putObject(targetObject, buffer.readFloat64());
         }
+        return false;
       default:
         return true;
     }

@@ -134,7 +134,8 @@ public final class CompatibleSerializer<T> extends CompatibleSerializerBase<T> {
         fury, buffer, targetObject, fieldAccessor, classId)) {
       Object fieldValue;
       fieldValue = fieldAccessor.getObject(targetObject);
-      if (ObjectSerializer.writeBasicObjectFieldValueFailed(fury, buffer, fieldValue, classId, false, true)) {
+      if (ObjectSerializer.writeBasicObjectFieldValueFailed(
+          fury, buffer, fieldValue, classId, null)) {
         if (classId == ClassResolver.NO_CLASS_ID) { // SEPARATE_TYPES_HASH
           writeSeparateFieldValue(fieldInfo, buffer, fieldValue);
         } else {
@@ -559,9 +560,9 @@ public final class CompatibleSerializer<T> extends CompatibleSerializerBase<T> {
     FieldAccessor fieldAccessor = fieldInfo.getFieldAccessor();
     short classId = fieldInfo.getEmbeddedClassId();
     if (ObjectSerializer.readPrimitiveFieldValueFailed(
-            fury, buffer, targetObject, fieldAccessor, classId)
+            fury, buffer, targetObject, fieldAccessor, classId, null)
         && ObjectSerializer.readBasicObjectFieldValueFailed(
-            fury, buffer, targetObject, fieldAccessor, classId)) {
+            fury, buffer, targetObject, fieldAccessor, classId, null)) {
       if (classId == ClassResolver.NO_CLASS_ID) {
         // SEPARATE_TYPES_HASH
         Object fieldValue = fieldResolver.readObjectField(buffer, fieldInfo);

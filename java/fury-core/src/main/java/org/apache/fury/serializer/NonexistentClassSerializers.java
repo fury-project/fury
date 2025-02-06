@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.apache.fury.Fury;
+import org.apache.fury.annotation.FieldInfo;
 import org.apache.fury.collection.IdentityObjectIntMap;
 import org.apache.fury.collection.LongMap;
 import org.apache.fury.collection.MapEntry;
@@ -195,6 +196,7 @@ public final class NonexistentClassSerializers {
       boolean[] isFinal = fieldsInfo.isFinal;
       for (int i = 0; i < finalFields.length; i++) {
         ObjectSerializer.FinalTypeField fieldInfo = finalFields[i];
+        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
         Object fieldValue;
         if (fieldInfo.classInfo == null) {
           // TODO(chaokunyang) support registered serializer in peer with ref tracking disabled.
@@ -205,19 +207,29 @@ public final class NonexistentClassSerializers {
           } else {
             fieldValue =
                 ObjectSerializer.readFinalObjectFieldValue(
-                    fury, refResolver, classResolver, fieldInfo, isFinal[i], buffer);
+                    fury,
+                    refResolver,
+                    classResolver,
+                    fieldInfo,
+                    isFinal[i],
+                    buffer,
+                    fieldInfoAnnotation);
           }
         }
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       for (ObjectSerializer.GenericTypeField fieldInfo : fieldsInfo.otherFields) {
-        Object fieldValue = ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
+        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
+        Object fieldValue =
+            ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer, fieldInfoAnnotation);
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       Generics generics = fury.getGenerics();
       for (ObjectSerializer.GenericTypeField fieldInfo : fieldsInfo.containerFields) {
+        FieldInfo fieldInfoAnnotation = fieldInfo.fieldInfo;
         Object fieldValue =
-            ObjectSerializer.readContainerFieldValue(fury, generics, fieldInfo, buffer);
+            ObjectSerializer.readContainerFieldValue(
+                fury, generics, fieldInfo, buffer, fieldInfoAnnotation);
         entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
       }
       obj.setEntries(entries);

@@ -24,6 +24,7 @@ import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertThrows;
 import static org.testng.Assert.assertTrue;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -53,6 +54,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.fury.annotation.Expose;
+import org.apache.fury.annotation.FieldInfo;
 import org.apache.fury.annotation.Ignore;
 import org.apache.fury.builder.Generated;
 import org.apache.fury.config.CompatibleMode;
@@ -434,13 +436,67 @@ public class FuryTest extends FuryTestBase {
     long f3;
   }
 
+  @Data
+  private static class FieldsInfoAnnotationClass {
+    @FieldInfo(nullable = false)
+    Integer i1 = Integer.valueOf(1);
+
+    @FieldInfo(nullable = false)
+    String s = "str";
+
+    @FieldInfo(nullable = false)
+    Short shortValue = Short.valueOf((short) 2);
+
+    @FieldInfo(nullable = false)
+    Byte byteValue = Byte.valueOf((byte) 3);
+
+    @FieldInfo(nullable = false)
+    Long longValue = Long.valueOf(4L);
+
+    @FieldInfo(nullable = false)
+    Boolean booleanValue = Boolean.TRUE;
+
+    @FieldInfo(nullable = false)
+    Float floatValue = Float.valueOf(5.0f);
+
+    @FieldInfo(nullable = false)
+    Double doubleValue = Double.valueOf(6.0);
+
+    @FieldInfo(nullable = false)
+    Character character = Character.valueOf('c');
+
+    int i2;
+
+    long l1;
+
+    float f1;
+
+    double d1;
+
+    char c1;
+
+    boolean b1;
+
+    byte byte1;
+
+    @FieldInfo(nullable = false)
+    List<Integer> integerList = Lists.newArrayList(1);
+  }
+
+  @Test
+  public void testFieldsInfoAnnotation() {
+    Fury fury = Fury.builder().requireClassRegistration(false).withCodegen(false).build();
+    final FieldsInfoAnnotationClass s = new FieldsInfoAnnotationClass();
+    FieldsInfoAnnotationClass o = serDe(fury, s);
+    assertEquals(o, s);
+    s.setIntegerList(null);
+    assertThrows(NullPointerException.class, () -> serDe(fury, s));
+  }
+
   @Test
   public void testIgnoreFields() {
     Fury fury = Fury.builder().requireClassRegistration(false).withCodegen(false).build();
-      ImmutableMap<String, Integer> map1 = ImmutableMap.of("1", 1);
-      ImmutableMap<String, Integer> map2 = ImmutableMap.of("2", 2);
-      ExposeFields o = serDe(fury, new ExposeFields(1, 2, 3, map1, map2));
-    IgnoreFields o1 = serDe(fury, new IgnoreFields(1, 2, 3));
+    IgnoreFields o = serDe(fury, new IgnoreFields(1, 2, 3));
     assertEquals(0, o.f1);
     assertEquals(0, o.f2);
     assertEquals(3, o.f3);
