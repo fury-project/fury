@@ -146,7 +146,7 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       if (fieldInfo.trackingRef) {
         fury.writeRef(buffer, fieldValue, fieldInfo.classInfoHolder);
       } else {
-        if (!fieldInfo.nullable) {
+        if (fieldInfo.nullable) {
           fury.writeNullable(buffer, fieldValue, fieldInfo.classInfoHolder);
         } else {
           fury.writeNonRef(
@@ -186,10 +186,10 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
                 serializer.write(buffer, fieldValue);
               }
             } else {
-              if (!fieldInfo.nullable) {
-                fury.writeNonRef(buffer, fieldValue, fieldInfo.classInfo);
-              } else {
+              if (fieldInfo.nullable) {
                 fury.writeNullable(buffer, fieldValue, fieldInfo.classInfo);
+              } else {
+                fury.writeNonRef(buffer, fieldValue, fieldInfo.classInfo);
               }
             }
           }
