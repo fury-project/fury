@@ -550,11 +550,11 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       MemoryBuffer buffer,
       Object fieldValue,
       short classId,
-      InternalFieldInfo internalFieldInfo) {
+      FinalTypeField finalTypeField) {
     if (!fury.isBasicTypesRefIgnored()) {
       return true; // let common path handle this.
     }
-    boolean nullable = internalFieldInfo.nullable;
+    boolean nullable = finalTypeField == null || finalTypeField.nullable;
     // add time types serialization here.
     switch (classId) {
       case ClassResolver.STRING_CLASS_ID: // fast path for string.
@@ -717,7 +717,7 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
         fieldAccessor.set(targetObject, buffer.readFloat64());
         return false;
       case ClassResolver.STRING_CLASS_ID:
-        fieldAccessor.putObject(targetObject, fury.readJavaStringRef(buffer, fieldInfo.nullable));
+        fieldAccessor.putObject(targetObject, fury.readJavaStringRef(buffer, fieldInfo == null || fieldInfo.nullable));
         return false;
       default:
         {
@@ -732,7 +732,7 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       Object targetObject,
       long fieldOffset,
       short classId,
-      InternalFieldInfo fieldInfo) {
+      FinalTypeField fieldInfo) {
     switch (classId) {
       case ClassResolver.PRIMITIVE_BOOLEAN_CLASS_ID:
         Platform.putBoolean(targetObject, fieldOffset, buffer.readBoolean());
@@ -764,7 +764,7 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
         return false;
       case ClassResolver.STRING_CLASS_ID:
         Platform.putObject(
-            targetObject, fieldOffset, fury.readJavaStringRef(buffer, fieldInfo.nullable));
+            targetObject, fieldOffset, fury.readJavaStringRef(buffer, fieldInfo == null || fieldInfo.nullable));
         return false;
       default:
         {
@@ -783,7 +783,7 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
     if (!fury.isBasicTypesRefIgnored()) {
       return true; // let common path handle this.
     }
-    boolean nullable = finalTypeField.nullable;
+    boolean nullable = finalTypeField == null || finalTypeField.nullable;
     // add time types serialization here.
     switch (classId) {
       case ClassResolver.STRING_CLASS_ID: // fast path for string.
