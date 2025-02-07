@@ -141,7 +141,8 @@ public final class CompatibleSerializer<T> extends CompatibleSerializerBase<T> {
         } else {
           ClassInfo classInfo = fieldInfo.getClassInfo(classId);
           Serializer<Object> serializer = classInfo.getSerializer();
-          fury.writeRef(buffer, fieldValue, serializer);
+          fury.writeRefNullable(
+              buffer, fieldValue, serializer, fieldInfo.getFuryFieldAnnotationInfo().nullable);
         }
       }
     }
@@ -181,7 +182,8 @@ public final class CompatibleSerializer<T> extends CompatibleSerializerBase<T> {
         buffer.writeFloat64((Double) fieldValue);
         return;
       case ClassResolver.STRING_CLASS_ID:
-        fury.writeJavaStringRef(buffer, (String) fieldValue);
+        fury.writeJavaStringRef(
+            buffer, (String) fieldValue, fieldInfo.getFuryFieldAnnotationInfo().nullable);
         break;
       case ClassResolver.NO_CLASS_ID: // SEPARATE_TYPES_HASH
         writeSeparateFieldValue(fieldInfo, buffer, fieldValue);
@@ -190,7 +192,8 @@ public final class CompatibleSerializer<T> extends CompatibleSerializerBase<T> {
         {
           ClassInfo classInfo = fieldInfo.getClassInfo(classId);
           Serializer<Object> serializer = classInfo.getSerializer();
-          fury.writeRef(buffer, fieldValue, serializer);
+          fury.writeRefNullable(
+              buffer, fieldValue, serializer, fieldInfo.getFuryFieldAnnotationInfo().nullable);
         }
     }
   }
@@ -580,7 +583,10 @@ public final class CompatibleSerializer<T> extends CompatibleSerializerBase<T> {
       } else {
         ClassInfo classInfo = fieldInfo.getClassInfo(classId);
         Serializer<Object> serializer = classInfo.getSerializer();
-        fieldAccessor.putObject(targetObject, fury.readRef(buffer, serializer));
+        fieldAccessor.putObject(
+            targetObject,
+            fury.readRefNullable(
+                buffer, serializer, fieldInfo.getFuryFieldAnnotationInfo().nullable));
       }
     }
   }
@@ -610,14 +616,15 @@ public final class CompatibleSerializer<T> extends CompatibleSerializerBase<T> {
       case ClassResolver.PRIMITIVE_DOUBLE_CLASS_ID:
         return buffer.readFloat64();
       case ClassResolver.STRING_CLASS_ID:
-        return fury.readJavaStringRef(buffer);
+        return fury.readJavaStringRef(buffer, fieldInfo.getFuryFieldAnnotationInfo().nullable);
       case ClassResolver.NO_CLASS_ID:
         return fieldResolver.readObjectField(buffer, fieldInfo);
       default:
         {
           ClassInfo classInfo = fieldInfo.getClassInfo(classId);
           Serializer<Object> serializer = classInfo.getSerializer();
-          return fury.readRef(buffer, serializer);
+          return fury.readRefNullable(
+              buffer, serializer, fieldInfo.getFuryFieldAnnotationInfo().nullable);
         }
     }
   }

@@ -462,6 +462,29 @@ public final class Fury implements BaseFury {
     }
   }
 
+  public <T> void writeRefNullable(
+      MemoryBuffer buffer, T obj, Serializer<T> serializer, boolean nullable) {
+    if (serializer.needToWriteRef()) {
+      if (!refResolver.writeRefOrNull(buffer, obj)) {
+        depth++;
+        serializer.write(buffer, obj);
+        depth--;
+      }
+    } else {
+      if (nullable) {
+        if (obj == null) {
+          buffer.writeByte(Fury.NULL_FLAG);
+          return;
+        } else {
+          buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
+        }
+      }
+      depth++;
+      serializer.write(buffer, obj);
+      depth--;
+    }
+  }
+
   /** Write object class and data without tracking ref. */
   public void writeNullable(MemoryBuffer buffer, Object obj) {
     if (obj == null) {
@@ -958,6 +981,29 @@ public final class Fury implements BaseFury {
       } else {
         return serializer.read(buffer);
       }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T> T readRefNullable(MemoryBuffer buffer, Serializer<T> serializer, boolean nullable) {
+    if (serializer.needToWriteRef()) {
+      T obj;
+      int nextReadRefId = refResolver.tryPreserveRefId(buffer);
+      if (nextReadRefId >= NOT_NULL_VALUE_FLAG) {
+        obj = serializer.read(buffer);
+        refResolver.setReadObject(nextReadRefId, obj);
+        return obj;
+      } else {
+        return (T) refResolver.getReadObject();
+      }
+    } else {
+      if (nullable) {
+        byte headFlag = buffer.readByte();
+        if (headFlag == Fury.NULL_FLAG) {
+          return null;
+        }
+      }
+      return serializer.read(buffer);
     }
   }
 
