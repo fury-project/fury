@@ -415,11 +415,34 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
         d.getField() != null ? d.getField().getAnnotation(FuryField.class) : null);
   }
 
+    /**
+     * This class is used to store the properties of the annotation {@link FuryField}, avoiding the reflection overhead when using annotations to obtain properties.
+     *
+     */
+  public static class FuryFieldAnnotationInfo {
+
+      //default value is true
+      public boolean nullable = true;
+
+      public FuryFieldAnnotationInfo(FuryField furyField) {
+          if (furyField != null) {
+              this.nullable = furyField.nullable();
+          }
+      }
+
+      @Override
+      public String toString() {
+          return "FuryFieldAnnotationInfo{" +
+                  "nullable=" + nullable +
+                  '}';
+      }
+  }
+
   public static class InternalFieldInfo {
     protected final short classId;
     protected final String qualifiedFieldName;
     protected final FieldAccessor fieldAccessor;
-    protected boolean nullable;
+    protected FuryFieldAnnotationInfo fieldAnnotationInfo;
 
     private InternalFieldInfo(
         short classId,
@@ -429,7 +452,7 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
       this.classId = classId;
       this.qualifiedFieldName = qualifiedFieldName;
       this.fieldAccessor = fieldAccessor;
-      this.nullable = furyField == null || furyField.nullable();
+      this.fieldAnnotationInfo = new FuryFieldAnnotationInfo(furyField);
     }
 
     @Override
@@ -441,8 +464,8 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
           + qualifiedFieldName
           + ", field="
           + (fieldAccessor != null ? fieldAccessor.getField() : null)
-          + ", nullable="
-          + nullable
+          + ", FuryFieldAnnotationInfo="
+          + fieldAnnotationInfo
           + '}';
     }
   }
@@ -507,8 +530,8 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
           + qualifiedFieldName
           + ", field="
           + (fieldAccessor != null ? fieldAccessor.getField() : null)
-          + ", nullable="
-          + nullable
+          + ", FuryFieldAnnotationInfo="
+          + fieldAnnotationInfo
           + '}';
     }
   }
