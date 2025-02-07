@@ -172,7 +172,8 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       short classId = fieldInfo.classId;
       if (writePrimitiveFieldValueFailed(fury, buffer, value, fieldAccessor, classId)) {
         Object fieldValue = fieldAccessor.getObject(value);
-        if (writeBasicObjectFieldValueFailed(fury, buffer, fieldValue, classId, fieldInfo.fieldAnnotationInfo)) {
+        if (writeBasicObjectFieldValueFailed(
+            fury, buffer, fieldValue, classId, fieldInfo.fieldAnnotationInfo)) {
           Serializer<Object> serializer = fieldInfo.classInfo.getSerializer();
           if (!metaShareEnabled || isFinal[i]) {
             // whether tracking ref is recorded in `fieldInfo.serializer`, so it's still
@@ -337,7 +338,8 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
       boolean isFinal = !metaShareEnabled || this.isFinal[i];
       FieldAccessor fieldAccessor = fieldInfo.fieldAccessor;
       short classId = fieldInfo.classId;
-      if (readPrimitiveFieldValueFailed(fury, buffer, obj, fieldAccessor, classId, fieldInfo.fieldAnnotationInfo)
+      if (readPrimitiveFieldValueFailed(
+              fury, buffer, obj, fieldAccessor, classId, fieldInfo.fieldAnnotationInfo)
           && readBasicObjectFieldValueFailed(
               fury, buffer, obj, fieldAccessor, classId, fieldInfo.fieldAnnotationInfo)) {
         Object fieldValue =
@@ -609,13 +611,7 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
         }
         return false;
       case ClassResolver.INTEGER_CLASS_ID:
-        if (!nullable) {
-          if (fury.compressInt()) {
-            buffer.writeVarInt32((Integer) (fieldValue));
-          } else {
-            buffer.writeInt32((Integer) (fieldValue));
-          }
-        } else {
+        if (nullable) {
           if (fieldValue == null) {
             buffer.writeByte(Fury.NULL_FLAG);
           } else {
@@ -625,6 +621,12 @@ public final class ObjectSerializer<T> extends AbstractObjectSerializer<T> {
             } else {
               buffer.writeInt32((Integer) (fieldValue));
             }
+          }
+        } else {
+          if (fury.compressInt()) {
+            buffer.writeVarInt32((Integer) (fieldValue));
+          } else {
+            buffer.writeInt32((Integer) (fieldValue));
           }
         }
         return false;

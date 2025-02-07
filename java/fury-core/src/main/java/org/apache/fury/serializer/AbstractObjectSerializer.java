@@ -415,27 +415,25 @@ public abstract class AbstractObjectSerializer<T> extends Serializer<T> {
         d.getField() != null ? d.getField().getAnnotation(FuryField.class) : null);
   }
 
-    /**
-     * This class is used to store the properties of the annotation {@link FuryField}, avoiding the reflection overhead when using annotations to obtain properties.
-     *
-     */
-  public static class FuryFieldAnnotationInfo {
+  /**
+   * This class is used to store the properties of the annotation {@link FuryField}, avoiding the
+   * reflection overhead when using annotations to obtain properties.
+   */
+  public static final class FuryFieldAnnotationInfo {
 
-      //default value is true
-      public boolean nullable = true;
+    // default value is true
+    public boolean nullable = true;
 
-      public FuryFieldAnnotationInfo(FuryField furyField) {
-          if (furyField != null) {
-              this.nullable = furyField.nullable();
-          }
+    public FuryFieldAnnotationInfo(FuryField furyField) {
+      if (furyField != null) {
+        this.nullable = furyField.nullable();
       }
+    }
 
-      @Override
-      public String toString() {
-          return "FuryFieldAnnotationInfo{" +
-                  "nullable=" + nullable +
-                  '}';
-      }
+    @Override
+    public String toString() {
+      return "FuryFieldAnnotationInfo{" + "nullable=" + nullable + '}';
+    }
   }
 
   public static class InternalFieldInfo {

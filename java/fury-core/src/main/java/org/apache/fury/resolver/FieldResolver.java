@@ -753,14 +753,14 @@ public class FieldResolver {
     private final AbstractObjectSerializer.FuryFieldAnnotationInfo furyFieldAnnotationInfo;
 
     public FieldInfo(
-            Fury fury,
-            String name,
-            Class<?> type,
-            Field field,
-            byte fieldType,
-            FieldInfoEncodingType fieldInfoEncodingType,
-            long encodedFieldInfo,
-            short classId) {
+        Fury fury,
+        String name,
+        Class<?> type,
+        Field field,
+        byte fieldType,
+        FieldInfoEncodingType fieldInfoEncodingType,
+        long encodedFieldInfo,
+        short classId) {
       this.name = name;
       this.type = type;
       this.field = field;
@@ -775,7 +775,9 @@ public class FieldResolver {
       } else {
         fieldAccessor = FieldAccessor.createAccessor(field);
       }
-      this.furyFieldAnnotationInfo = new AbstractObjectSerializer.FuryFieldAnnotationInfo(field == null ? null : field.getAnnotation(FuryField.class));
+      this.furyFieldAnnotationInfo =
+          new AbstractObjectSerializer.FuryFieldAnnotationInfo(
+              field == null ? null : field.getAnnotation(FuryField.class));
     }
 
     public static FieldInfo of(
@@ -842,11 +844,11 @@ public class FieldResolver {
       }
     }
 
-      public AbstractObjectSerializer.FuryFieldAnnotationInfo getFuryFieldAnnotationInfo() {
-          return furyFieldAnnotationInfo;
-      }
+    public AbstractObjectSerializer.FuryFieldAnnotationInfo getFuryFieldAnnotationInfo() {
+      return furyFieldAnnotationInfo;
+    }
 
-      public String getName() {
+    public String getName() {
       return name;
     }
 
