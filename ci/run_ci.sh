@@ -259,6 +259,12 @@ case $1 in
         exit $testcode
       fi
       echo "Executing fury python tests succeeds"
+      ENABLE_FURY_CYTHON_SERIALIZATION=0 pytest -v -s --durations=60 pyfury/tests
+      testcode=$?
+      if [[ $testcode -ne 0 ]]; then
+        exit $testcode
+      fi
+      echo "Executing fury python tests succeeds"
     ;;
     go)
       echo "Executing fury go tests for go"

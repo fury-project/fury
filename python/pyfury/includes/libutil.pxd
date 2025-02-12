@@ -53,6 +53,8 @@ cdef extern from "fury/util/buffer.h" namespace "fury" nogil:
 
         inline void UnsafePutByte(uint32_t offset, c_bool)
 
+        inline void UnsafePutByte(uint32_t offset, uint8_t)
+
         inline void UnsafePutByte(uint32_t offset, int8_t)
 
         inline void UnsafePut(uint32_t offset, int16_t)

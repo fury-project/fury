@@ -428,7 +428,7 @@ class Fury:
     def read_buffer_object(self, buffer) -> Buffer:
         in_band = buffer.read_bool()
         if in_band:
-            size = buffer.read_varint32()
+            size = buffer.read_varuint32()
             buf = buffer.slice(buffer.reader_index, size)
             buffer.reader_index += size
             return buf

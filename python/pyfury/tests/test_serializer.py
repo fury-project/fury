@@ -613,5 +613,33 @@ def test_function():
     assert df_sum().equals(df.sum())
 
 
+@dataclass(unsafe_hash=True)
+class MapFields:
+    simple_dict: dict = None
+    empty_dict: dict = None
+    large_dict: dict = None
+
+
+def test_map_fields_chunk_serializer():
+    fury = Fury(
+        language=Language.PYTHON, ref_tracking=True, require_class_registration=False
+    )
+
+    simple_dict = {"a": 1, "b": 2, "c": 3}
+    empty_dict = {}
+    large_dict = {f"key{i}": i for i in range(1000)}
+
+    # MapSerializer test
+    map_fields_object = MapFields(
+        simple_dict=simple_dict, empty_dict=empty_dict, large_dict=large_dict
+    )
+
+    serialized = fury.serialize(map_fields_object)
+    deserialized = fury.deserialize(serialized)
+    assert map_fields_object.simple_dict == deserialized.simple_dict
+    assert map_fields_object.empty_dict == deserialized.empty_dict
+    assert map_fields_object.large_dict == deserialized.large_dict
+
+
 if __name__ == "__main__":
     test_string()

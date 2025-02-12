@@ -87,6 +87,10 @@ cdef class Buffer:
         self.check_bound(offset, <int32_t>1)
         self.c_buffer.get().UnsafePutByte(offset, v)
 
+    cpdef inline put_uint8(self, uint32_t offset, uint8_t v):
+        self.check_bound(offset, <int32_t>1)
+        self.c_buffer.get().UnsafePutByte(offset, v)
+
     cpdef inline put_int8(self, uint32_t offset, int8_t v):
         self.check_bound(offset, <int32_t>1)
         self.c_buffer.get().UnsafePutByte(offset, v)
