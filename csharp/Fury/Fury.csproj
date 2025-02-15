@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+        <LangVersion>12</LangVersion>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Configurations>Debug;Release;ReleaseAot</Configurations>
+        <Platforms>AnyCPU</Platforms>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+      <PackageReference Include="System.Memory" Version="4.6.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.IO.Pipelines" Version="9.0.0" />
+    </ItemGroup>
+</Project>

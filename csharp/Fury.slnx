@@ -1,0 +1,8 @@
+﻿<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+  </Configurations>
+  <Project Path="Fury.Testing\Fury.Testing.csproj" Type="Classic C#" />
+  <Project Path="Fury\Fury.csproj" Type="Classic C#" />
+</Solution>
