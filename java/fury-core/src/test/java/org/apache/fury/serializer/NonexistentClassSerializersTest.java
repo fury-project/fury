@@ -108,6 +108,44 @@ public class NonexistentClassSerializersTest extends FuryTestBase {
     }
   }
 
+  @Test(dataProvider = "config")
+  public void testSkipNonexistentWithNoneClassInfo(
+      boolean referenceTracking,
+      boolean scopedMetaShare,
+      boolean enableCodegen1,
+      boolean enableCodegen2) {
+    Fury fury =
+        furyBuilder(scopedMetaShare)
+            .withRefTracking(referenceTracking)
+            .withCodegen(enableCodegen1)
+            .withCompatibleMode(CompatibleMode.COMPATIBLE)
+            .withDeserializeNonexistentClassNotWriteFullClassInfo(true)
+            .build();
+    ClassLoader classLoader = getClass().getClassLoader();
+    for (Class<?> structClass :
+        new Class<?>[] {
+          Struct.createNumberStructClass("TestSkipNonexistentClass1", 2),
+          Struct.createStructClass("TestSkipNonexistentClass1", 2)
+        }) {
+      Object pojo = Struct.createPOJO(structClass);
+      byte[] bytes = fury.serialize(pojo);
+      Fury fury2 =
+          furyBuilder(scopedMetaShare)
+              .withRefTracking(referenceTracking)
+              .withCodegen(enableCodegen2)
+              .withClassLoader(classLoader)
+              .withDeserializeNonexistentClassNotWriteFullClassInfo(true)
+              .build();
+      Object o = fury2.deserialize(bytes);
+      if (o instanceof NonexistentClass.NonexistentMetaShared) {
+        System.out.println(o);
+        NonexistentClass.NonexistentMetaShared s = (NonexistentClass.NonexistentMetaShared) o;
+        Assert.assertNotNull(s.get("f0"));
+      }
+      assertTrue(o instanceof NonexistentClass, "Unexpect type " + o.getClass());
+    }
+  }
+
   @Test(dataProvider = "scopedMetaShare")
   public void testNonexistentEnum(boolean scopedMetaShare) {
     Fury fury = furyBuilder(scopedMetaShare).withDeserializeNonexistentClass(true).build();
