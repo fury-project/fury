@@ -142,3 +142,44 @@ class ScalaSortedMapSerializer[K, V, T <: scala.collection.SortedMap[K, V]](fury
     new MapAdapter[K, V](value)
   }
 }
+
+abstract class AbstractScalaMapSerializer[K, V, T](fury: Fury, cls: Class[T])
+  extends AbstractMapSerializer[T](fury, cls) {
+  
+  // Existing methods
+
+  // Add copy method
+  def copy(value: T): T = {
+    val builder = value.mapFactory.newBuilder[K, V]
+    builder ++= value
+    builder.result()
+  }
+}
+
+class ScalaMapSerializer[K, V, T <: scala.collection.Map[K, V]](fury: Fury, cls: Class[T])
+  extends AbstractScalaMapSerializer[K, V, T](fury, cls) {
+
+  override def onMapWrite(buffer: MemoryBuffer, value: T): util.Map[_, _] = {
+    buffer.writeVarUint32Small7(value.size)
+    val factory = value.mapFactory.mapFactory[Any, Any].asInstanceOf[Factory[Any, Any]]
+    fury.writeRef(buffer, factory)
+    new MapAdapter[K, V](value)
+  }
+
+  // Implement copy method
+  override def copy(value: T): T = super.copy(value)
+}
+
+class ScalaSortedMapSerializer[K, V, T <: scala.collection.SortedMap[K, V]](fury: Fury, cls: Class[T])
+  extends AbstractScalaMapSerializer[K, V, T](fury, cls) {
+  override def onMapWrite(buffer: MemoryBuffer, value: T): util.Map[_, _] = {
+    buffer.writeVarUint32Small7(value.size)
+    val factory = value.sortedMapFactory.sortedMapFactory[Any, Any](
+      value.ordering.asInstanceOf[Ordering[Any]]).asInstanceOf[Factory[Any, Any]]
+    fury.writeRef(buffer, factory)
+    new MapAdapter[K, V](value)
+  }
+
+  // Implement copy method
+  override def copy(value: T): T = super.copy(value)
+}
