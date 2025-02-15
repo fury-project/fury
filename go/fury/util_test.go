@@ -43,3 +43,60 @@ func TestTime(t *testing.T) {
 	require.Equal(t, t1.Nanosecond()/1000, t2.Nanosecond()/1000)
 	require.WithinDuration(t, t1, t2, 1000)
 }
+
+type UTF16TestBean struct {
+	UTF16Data      []byte
+	expectedValue  string
+	isLittleEndian bool
+}
+
+func TestUTF16ToString(t *testing.T) {
+	data := []UTF16TestBean{
+		{
+			[]byte{
+				0b01101000, 0b00000000,
+				0b01100101, 0b00000000,
+				0b01101100, 0b00000000,
+				0b01101100, 0b00000000,
+				0b01101111, 0b00000000,
+				0b00010110, 0b01001110,
+				0b01001100, 0b01110101,
+			},
+			"hello世界",
+			true,
+		},
+		{
+			[]byte{
+				0b00110100, 0b11011000, 0b00011110, 0b11011101,
+			},
+			// U+1D11E(UTF16 four bytes encode)
+			"𝄞",
+			true,
+		},
+		{
+			[]byte{
+				0b11011000, 0b00110100, 0b11011101, 0b00011110,
+			},
+			// U+1D11E(UTF16 four bytes encode)
+			"𝄞",
+			false,
+		},
+	}
+
+	for _, value := range data {
+		check(t, value.UTF16Data, value.expectedValue, value.isLittleEndian)
+	}
+}
+
+func check(t *testing.T, utf16Data []byte, expectedValue string, isLittleEndian bool) {
+	strData, err := UTF16ToString(utf16Data, isLittleEndian)
+	require.NoError(t, err)
+	require.Equal(t, expectedValue, strData)
+}
+
+func TestUTF16ToStringError(t *testing.T) {
+	utf16ErrorData := []byte{0b01101000, 0b00000000, 0b01100101}
+	_, err := UTF16ToString(utf16ErrorData, true)
+	require.Error(t, err)
+}
+
