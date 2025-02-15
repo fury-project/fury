@@ -1,0 +1,26 @@
+name: Remove PR Comments
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  remove-comments:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Remove commented content
+      id: remove_comments
+      run: |
+        PR_BODY=$(jq -r .pull_request.body "$GITHUB_EVENT_PATH")
+        CLEANED_BODY=$(echo "$PR_BODY" | sed '/<!--/,/-->/d')
+        echo "cleaned_body=$CLEANED_BODY" >> $GITHUB_ENV
+
+    - name: Update PR description
+      uses: peter-evans/repository-dispatch@v1
+      with:
+        event-type: update-pr-description
+        client-payload: '{"body": "${{ env.cleaned_body }}"}'
