@@ -465,6 +465,29 @@ public final class Fury implements BaseFury {
     }
   }
 
+  public <T> void writeRefNullable(
+      MemoryBuffer buffer, T obj, Serializer<T> serializer, boolean nullable) {
+    if (serializer.needToWriteRef()) {
+      if (!refResolver.writeRefOrNull(buffer, obj)) {
+        depth++;
+        serializer.write(buffer, obj);
+        depth--;
+      }
+    } else {
+      if (nullable) {
+        if (obj == null) {
+          buffer.writeByte(Fury.NULL_FLAG);
+          return;
+        } else {
+          buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
+        }
+      }
+      depth++;
+      serializer.write(buffer, obj);
+      depth--;
+    }
+  }
+
   /** Write object class and data without tracking ref. */
   public void writeNullable(MemoryBuffer buffer, Object obj) {
     if (obj == null) {
@@ -710,6 +733,25 @@ public final class Fury implements BaseFury {
     }
   }
 
+  public void writeJavaStringRef(MemoryBuffer buffer, String str, boolean nullable) {
+    if (stringSerializer.needToWriteRef()) {
+      if (!refResolver.writeRefOrNull(buffer, str)) {
+        stringSerializer.writeJavaString(buffer, str);
+      }
+    } else {
+      if (nullable) {
+        if (str == null) {
+          buffer.writeByte(Fury.NULL_FLAG);
+        } else {
+          buffer.writeByte(Fury.NOT_NULL_VALUE_FLAG);
+          stringSerializer.write(buffer, str);
+        }
+      } else {
+        stringSerializer.write(buffer, str);
+      }
+    }
+  }
+
   public String readJavaStringRef(MemoryBuffer buffer) {
     RefResolver refResolver = this.refResolver;
     if (stringSerializer.needToWriteRef()) {
@@ -726,6 +768,32 @@ public final class Fury implements BaseFury {
       byte headFlag = buffer.readByte();
       if (headFlag == Fury.NULL_FLAG) {
         return null;
+      } else {
+        return stringSerializer.read(buffer);
+      }
+    }
+  }
+
+  public String readJavaStringRef(MemoryBuffer buffer, boolean nullable) {
+    RefResolver refResolver = this.refResolver;
+    if (stringSerializer.needToWriteRef()) {
+      String obj;
+      int nextReadRefId = refResolver.tryPreserveRefId(buffer);
+      if (nextReadRefId >= NOT_NULL_VALUE_FLAG) {
+        obj = stringSerializer.read(buffer);
+        refResolver.setReadObject(nextReadRefId, obj);
+        return obj;
+      } else {
+        return (String) refResolver.getReadObject();
+      }
+    } else {
+      if (nullable) {
+        byte headFlag = buffer.readByte();
+        if (headFlag == Fury.NULL_FLAG) {
+          return null;
+        } else {
+          return stringSerializer.read(buffer);
+        }
       } else {
         return stringSerializer.read(buffer);
       }
@@ -929,6 +997,29 @@ public final class Fury implements BaseFury {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  public <T> T readRefNullable(MemoryBuffer buffer, Serializer<T> serializer, boolean nullable) {
+    if (serializer.needToWriteRef()) {
+      T obj;
+      int nextReadRefId = refResolver.tryPreserveRefId(buffer);
+      if (nextReadRefId >= NOT_NULL_VALUE_FLAG) {
+        obj = serializer.read(buffer);
+        refResolver.setReadObject(nextReadRefId, obj);
+        return obj;
+      } else {
+        return (T) refResolver.getReadObject();
+      }
+    } else {
+      if (nullable) {
+        byte headFlag = buffer.readByte();
+        if (headFlag == Fury.NULL_FLAG) {
+          return null;
+        }
+      }
+      return serializer.read(buffer);
+    }
+  }
+
   /** Deserialize not-null and non-reference object from <code>buffer</code>. */
   public Object readNonRef(MemoryBuffer buffer) {
     return readDataInternal(buffer, classResolver.readClassInfo(buffer));
@@ -945,15 +1036,6 @@ public final class Fury implements BaseFury {
       return null;
     } else {
       return readNonRef(buffer);
-    }
-  }
-
-  public Object readNullable(MemoryBuffer buffer, ClassInfoHolder classInfoHolder) {
-    byte headFlag = buffer.readByte();
-    if (headFlag == Fury.NULL_FLAG) {
-      return null;
-    } else {
-      return readNonRef(buffer, classInfoHolder);
     }
   }
 

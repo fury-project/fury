@@ -49,10 +49,13 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.WeakHashMap;
+
+import com.google.common.collect.Lists;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.fury.annotation.Expose;
+import org.apache.fury.annotation.FuryField;
 import org.apache.fury.annotation.Ignore;
 import org.apache.fury.builder.Generated;
 import org.apache.fury.config.CompatibleMode;
@@ -432,6 +435,63 @@ public class FuryTest extends FuryTestBase {
     @Ignore int f1;
     @Ignore long f2;
     long f3;
+  }
+
+  @Data
+  private static class FieldsInfoAnnotationClass {
+    @FuryField(nullable = false)
+    Integer i1 = Integer.valueOf(1);
+
+    @FuryField(nullable = false)
+    String s = "str";
+
+    @FuryField(nullable = false)
+    Short shortValue = Short.valueOf((short) 2);
+
+    @FuryField(nullable = false)
+    Byte byteValue = Byte.valueOf((byte) 3);
+
+    @FuryField(nullable = false)
+    Long longValue = Long.valueOf(4L);
+
+    @FuryField(nullable = false)
+    Boolean booleanValue = Boolean.TRUE;
+
+    @FuryField(nullable = false)
+    Float floatValue = Float.valueOf(5.0f);
+
+    @FuryField(nullable = false)
+    Double doubleValue = Double.valueOf(6.0);
+
+    @FuryField(nullable = false)
+    Character character = Character.valueOf('c');
+
+    int i2;
+
+    long l1;
+
+    float f1;
+
+    double d1;
+
+    char c1;
+
+    boolean b1;
+
+    byte byte1;
+
+    @FuryField(nullable = false)
+    List<Integer> integerList = Lists.newArrayList(1);
+  }
+
+  @Test
+  public void testFuryFieldsAnnotation() {
+    Fury fury = Fury.builder().requireClassRegistration(false).withCodegen(false).build();
+    final FieldsInfoAnnotationClass s = new FieldsInfoAnnotationClass();
+    FieldsInfoAnnotationClass o = serDe(fury, s);
+    assertEquals(o, s);
+    s.setIntegerList(null);
+    assertThrows(NullPointerException.class, () -> serDe(fury, s));
   }
 
   @Test

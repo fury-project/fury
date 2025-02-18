@@ -43,12 +43,14 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.apache.fury.Fury;
+import org.apache.fury.annotation.FuryField;
 import org.apache.fury.collection.Tuple2;
 import org.apache.fury.exception.ClassNotCompatibleException;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.reflect.FieldAccessor;
 import org.apache.fury.reflect.ReflectionUtils;
 import org.apache.fury.reflect.TypeRef;
+import org.apache.fury.serializer.AbstractObjectSerializer;
 import org.apache.fury.serializer.PrimitiveSerializers;
 import org.apache.fury.serializer.collection.AbstractCollectionSerializer;
 import org.apache.fury.serializer.collection.AbstractMapSerializer;
@@ -748,6 +750,7 @@ public class FieldResolver {
     protected final ClassResolver classResolver;
     private final FieldAccessor fieldAccessor;
     private final ClassInfoHolder classInfoHolder;
+    private final AbstractObjectSerializer.FuryFieldAnnotationInfo furyFieldAnnotationInfo;
 
     public FieldInfo(
         Fury fury,
@@ -772,6 +775,9 @@ public class FieldResolver {
       } else {
         fieldAccessor = FieldAccessor.createAccessor(field);
       }
+      this.furyFieldAnnotationInfo =
+          new AbstractObjectSerializer.FuryFieldAnnotationInfo(
+              field == null ? null : field.getAnnotation(FuryField.class));
     }
 
     public static FieldInfo of(
@@ -836,6 +842,10 @@ public class FieldResolver {
             encodedFieldInfo,
             NO_CLASS_ID);
       }
+    }
+
+    public AbstractObjectSerializer.FuryFieldAnnotationInfo getFuryFieldAnnotationInfo() {
+      return furyFieldAnnotationInfo;
     }
 
     public String getName() {
