@@ -17,47 +17,32 @@
  * under the License.
  */
 
-import { TupleTypeDescription, TypeDescription } from "../description";
+import { TupleClassInfo, ClassInfo } from "../classInfo";
 import { CodecBuilder } from "./builder";
-import { BaseSerializerGenerator, RefState } from "./serializer";
+import { BaseSerializerGenerator, RefState, SerializerGenerator } from "./serializer";
 import { CodegenRegistry } from "./router";
 import { InternalSerializerType } from "../type";
 import { Scope } from "./scope";
 
 class TupleSerializerGenerator extends BaseSerializerGenerator {
-  description: TupleTypeDescription;
+  classInfo: TupleClassInfo;
+  innerGenerators: SerializerGenerator[];
 
-  constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-    super(description, builder, scope);
-    this.description = <TupleTypeDescription>description;
-  }
-
-  private innerMeta() {
-    const inner = this.description.options.inner;
-    return inner.map(x => this.builder.meta(x));
-  }
-
-  private innerGenerator() {
-    const inner = this.description.options.inner;
-    return inner.map((x) => {
-      const InnerGeneratorClass = CodegenRegistry.get(x.type);
-      if (!InnerGeneratorClass) {
-        throw new Error(`${x.type} generator not exists`);
-      }
-      return new InnerGeneratorClass(x, this.builder, this.scope);
-    });
+  constructor(classinfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+    super(classinfo, builder, scope);
+    this.classInfo = <TupleClassInfo>classinfo;
+    const inner = this.classInfo.options.inner;
+    this.innerGenerators = inner.map(x => CodegenRegistry.newGeneratorByClassInfo(x, this.builder, this.scope));
   }
 
   writeStmt(accessor: string): string {
-    const innerMeta = this.innerMeta();
-    const innerGenerator = this.innerGenerator();
-    const fixedSize = innerMeta.reduce((x, y) => x + y.fixedSize, 0);
+    const fixedSize = this.innerGenerators.reduce((x, y) => x + y.getFixedSize(), 0);
 
     return `
-            ${this.builder.writer.varUInt32(innerMeta.length)}
+            ${this.builder.writer.varUInt32(this.innerGenerators.length)}
             ${this.builder.writer.reserve(fixedSize)};
             ${
-                innerGenerator.map((generator, index) => {
+                this.innerGenerators.map((generator, index) => {
                     return generator.toWriteEmbed(`${accessor}[${index}]`);
                 }).join("\n")
             }
@@ -65,7 +50,6 @@ class TupleSerializerGenerator extends BaseSerializerGenerator {
   }
 
   readStmt(accessor: (expr: string) => string, refState: RefState): string {
-    const innerGenerator = this.innerGenerator();
     const result = this.scope.uniqueName("result");
     const len = this.scope.uniqueName("len");
 
@@ -74,7 +58,7 @@ class TupleSerializerGenerator extends BaseSerializerGenerator {
             const ${result} = new Array(${len});
             ${this.maybeReference(result, refState)}
             ${
-                innerGenerator.map((generator, index) => {
+                this.innerGenerators.map((generator, index) => {
                     return `
                     if (${len} > ${index}) {
                         ${generator.toReadEmbed(expr => `${result}[${index}] = ${expr}`)}
@@ -84,6 +68,14 @@ class TupleSerializerGenerator extends BaseSerializerGenerator {
             }
             ${accessor(result)}
          `;
+  }
+
+  getFixedSize(): number {
+    return 7;
+  }
+
+  needToWriteRef(): boolean {
+    return Boolean(this.builder.fury.config.refTracking);
   }
 }
 

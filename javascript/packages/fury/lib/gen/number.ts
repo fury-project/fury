@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { TypeDescription } from "../description";
+import { ClassInfo } from "../classInfo";
 import { CodecBuilder } from "./builder";
 import { BaseSerializerGenerator } from "./serializer";
 import { CodegenRegistry } from "./router";
@@ -26,11 +26,11 @@ import { Scope } from "./scope";
 
 function buildNumberSerializer(writeFun: (builder: CodecBuilder, accessor: string) => string, read: (builder: CodecBuilder) => string) {
   return class NumberSerializerGenerator extends BaseSerializerGenerator {
-    description: TypeDescription;
+    classInfo: ClassInfo;
 
-    constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-      super(description, builder, scope);
-      this.description = description;
+    constructor(classinfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+      super(classinfo, builder, scope);
+      this.classInfo = classinfo;
     }
 
     writeStmt(accessor: string): string {
@@ -39,6 +39,14 @@ function buildNumberSerializer(writeFun: (builder: CodecBuilder, accessor: strin
 
     readStmt(accessor: (expr: string) => string): string {
       return accessor(read(this.builder));
+    }
+
+    getFixedSize(): number {
+      return 11;
+    }
+
+    needToWriteRef(): boolean {
+      return false;
     }
   };
 }

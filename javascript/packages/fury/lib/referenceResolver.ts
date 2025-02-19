@@ -24,7 +24,7 @@ import { BinaryReader } from "./reader";
 
 export class ReferenceResolver {
   private readObjects: any[] = [];
-  private writeObjects: any[] = [];
+  private writeObjects: Map<any, number> = new Map();
 
   constructor(private binaryReader: BinaryReader) {
 
@@ -32,7 +32,7 @@ export class ReferenceResolver {
 
   reset() {
     this.readObjects = [];
-    this.writeObjects = [];
+    this.writeObjects = new Map();
   }
 
   getReadObject(refId: number) {
@@ -48,14 +48,10 @@ export class ReferenceResolver {
   }
 
   writeRef(object: any) {
-    this.writeObjects.push(object);
+    this.writeObjects.set(object, this.writeObjects.size);
   }
 
   existsWriteObject(obj: any) {
-    for (let index = 0; index < this.writeObjects.length; index++) {
-      if (this.writeObjects[index] === obj) {
-        return index;
-      }
-    }
+    return this.writeObjects.get(obj);
   }
 }

@@ -17,15 +17,13 @@
  * under the License.
  */
 
-import { InternalSerializerType, MaxInt32, Mode } from "../type";
+import { InternalSerializerType, MaxInt32, Mode, TypeId } from "../type";
 import { Scope } from "./scope";
 import { CodecBuilder } from "./builder";
-import { ObjectTypeDescription, TypeDescription } from "../description";
-import { fromString } from "../platformBuffer";
+import { StructClassInfo, ClassInfo } from "../classInfo";
 import { CodegenRegistry } from "./router";
 import { BaseSerializerGenerator, RefState } from "./serializer";
-import SerializerResolver from "../classResolver";
-import { FieldInfo, TypeMeta } from "../meta/TypeMeta";
+import { fromString } from "../platformBuffer";
 
 function computeFieldHash(hash: number, id: number): number {
   let newHash = (hash) * 31 + (id);
@@ -47,46 +45,32 @@ const computeStringHash = (str: string) => {
   return hash;
 };
 
-const computeStructHash = (description: TypeDescription) => {
+const computeStructHash = (classInfo: ClassInfo) => {
   let hash = 17;
-  for (const [, value] of Object.entries((<ObjectTypeDescription>description).options.props).sort()) {
-    let id = SerializerResolver.getTypeIdByInternalSerializerType(value.type);
-    if (value.type === InternalSerializerType.OBJECT) {
-      id = computeStringHash((<ObjectTypeDescription>value).options.tag);
+  for (const [, value] of Object.entries((<StructClassInfo>classInfo).options.props!).sort()) {
+    let id = value.typeId;
+    if (TypeId.IS_NAMED_TYPE(value.typeId!)) {
+      id = computeStringHash((<StructClassInfo>value).namespace! + (<StructClassInfo>value).typeName!);
     }
-    hash = computeFieldHash(hash, id);
+    hash = computeFieldHash(hash, id || 0);
   }
   return hash;
 };
 
-class ObjectSerializerGenerator extends BaseSerializerGenerator {
-  description: ObjectTypeDescription;
+class StructSerializerGenerator extends BaseSerializerGenerator {
+  classInfo: StructClassInfo;
 
-  constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-    super(description, builder, scope);
-    this.description = <ObjectTypeDescription>description;
+  constructor(classInfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+    super(classInfo, builder, scope);
+    this.classInfo = <StructClassInfo>classInfo;
   }
 
   writeStmt(accessor: string): string {
-    const options = this.description.options;
-    const expectHash = computeStructHash(this.description);
-    // const metaInformation = Buffer.from(computeMetaInformation(this.description));
-    const fields = Object.entries(this.description).map(([key, value]) => {
-      return new FieldInfo(key, value.type);
-    });
-    const typeMetaBinary = new Uint8Array(TypeMeta.fromFields(256, fields).toBytes());
-    const typeMetaDeclare = this.scope.declare("typeMeta", `new Uint8Array([${typeMetaBinary.toString()}])`);
+    const options = this.classInfo.options;
 
     return `
-      ${this.builder.writer.int32(expectHash)};
-      
-      ${
-        this.builder.fury.config.mode === Mode.Compatible
-          ? this.builder.writer.buffer(typeMetaDeclare)
-          : ""
-      }
-
-      ${Object.entries(options.props).sort().map(([key, inner]) => {
+      ${this.builder.fury.config.mode === Mode.SchemaConsistent ? this.builder.writer.varUInt32(computeStructHash(this.classInfo)) : ""}
+      ${Object.entries(options.props!).sort().map(([key, inner]) => {
         const InnerGeneratorClass = CodegenRegistry.get(inner.type);
         if (!InnerGeneratorClass) {
             throw new Error(`${inner.type} generator not exists`);
@@ -98,36 +82,34 @@ class ObjectSerializerGenerator extends BaseSerializerGenerator {
   }
 
   readStmt(accessor: (expr: string) => string, refState: RefState): string {
-    const options = this.description.options;
-    const expectHash = computeStructHash(this.description);
+    const options = this.classInfo.options;
     const result = this.scope.uniqueName("result");
 
     return `
-      if (${this.builder.reader.int32()} !== ${expectHash}) {
-          throw new Error("got ${this.builder.reader.int32()} validate hash failed: ${this.safeTag()}. expect ${expectHash}");
-      }
       ${
-        this.description.options.withConstructor
+        this.builder.fury.config.mode === Mode.SchemaConsistent
+? `
+        if (${this.builder.reader.varUInt32()} !== ${computeStructHash(this.classInfo)}) {
+          throw new Error("hash error");
+        }`
+: ""
+      }
+
+      ${
+        this.classInfo.options.withConstructor && this.builder.fury.config?.constructClass
 ? `
           const ${result} = new ${this.builder.getOptions("constructor")}();
         `
 : `
           const ${result} = {
-            ${Object.entries(options.props).sort().map(([key]) => {
+            ${Object.entries(options.props!).sort().map(([key]) => {
               return `${CodecBuilder.safePropName(key)}: null`;
             }).join(",\n")}
           };
         `
       }
-      
-
       ${this.maybeReference(result, refState)}
-      ${
-        this.builder.fury.config.mode === Mode.Compatible
-          ? this.builder.typeMeta.fromBytes(this.builder.reader.ownName())
-          : ""
-      }
-      ${Object.entries(options.props).sort().map(([key, inner]) => {
+      ${Object.entries(options.props!).sort().map(([key, inner]) => {
         const InnerGeneratorClass = CodegenRegistry.get(inner.type);
         if (!InnerGeneratorClass) {
           throw new Error(`${inner.type} generator not exists`);
@@ -139,14 +121,12 @@ class ObjectSerializerGenerator extends BaseSerializerGenerator {
     `;
   }
 
-  private safeTag() {
-    return CodecBuilder.replaceBackslashAndQuote(this.description.options.tag);
-  }
-
   toReadEmbed(accessor: (expr: string) => string, excludeHead?: boolean, refState?: RefState): string {
     const name = this.scope.declare(
       "tag_ser",
-      `fury.classResolver.getSerializerByTag("${this.safeTag()}")`
+      TypeId.IS_NAMED_TYPE(this.classInfo.typeId)
+        ? this.builder.classResolver.getSerializerByName(CodecBuilder.replaceBackslashAndQuote(this.classInfo.named!))
+        : this.builder.classResolver.getSerializerById(this.classInfo.typeId)
     );
     if (!excludeHead) {
       return accessor(`${name}.read()`);
@@ -157,13 +137,34 @@ class ObjectSerializerGenerator extends BaseSerializerGenerator {
   toWriteEmbed(accessor: string, excludeHead?: boolean): string {
     const name = this.scope.declare(
       "tag_ser",
-      `fury.classResolver.getSerializerByTag("${this.safeTag()}")`
+      TypeId.IS_NAMED_TYPE(this.classInfo.typeId)
+        ? this.builder.classResolver.getSerializerByName(CodecBuilder.replaceBackslashAndQuote(this.classInfo.named!))
+        : this.builder.classResolver.getSerializerById(this.classInfo.typeId)
     );
     if (!excludeHead) {
       return `${name}.write(${accessor})`;
     }
     return `${name}.writeInner(${accessor})`;
   }
+
+  getFixedSize(): number {
+    const classInfo = <StructClassInfo> this.classInfo;
+    const options = classInfo.options;
+    let fixedSize = 8;
+    if (options.props) {
+      Object.values(options.props).forEach((x) => {
+        const propGenerator = new (CodegenRegistry.get(x.type)!)(x, this.builder, this.scope);
+        fixedSize += propGenerator.getFixedSize();
+      });
+    } else {
+      fixedSize += this.builder.fury.classResolver.getSerializerByName(classInfo.named!)!.fixedSize;
+    }
+    return fixedSize;
+  }
+
+  needToWriteRef(): boolean {
+    return Boolean(this.builder.fury.config.refTracking);
+  }
 }
 
-CodegenRegistry.register(InternalSerializerType.OBJECT, ObjectSerializerGenerator);
+CodegenRegistry.register(InternalSerializerType.STRUCT, StructSerializerGenerator);

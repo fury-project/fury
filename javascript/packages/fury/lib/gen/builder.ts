@@ -18,8 +18,6 @@
  */
 
 import { Scope } from "./scope";
-import { getMeta } from "../meta";
-import { TypeDescription } from "../description";
 import Fury from "../fury";
 
 class TypeMetaBuilder {
@@ -299,20 +297,68 @@ class ClassResolverBuilder {
     return `${this.holder}.getSerializerById(${id})`;
   }
 
-  getSerializerByTag(tag: string) {
-    return `${this.holder}.getSerializerByTag(${tag})`;
-  }
-
-  createTagWriter(tag: string) {
-    return `${this.holder}.createTagWriter("${tag}")`;
-  }
-
-  readTag(binaryReader: string) {
-    return `${this.holder}.readTag(${binaryReader})`;
+  getSerializerByName(name: string) {
+    return `${this.holder}.getSerializerByName("${name}")`;
   }
 
   getSerializerByData(v: string) {
     return `${this.holder}.readTag(${v})`;
+  }
+
+  getClassInfo(v: string) {
+    return `${this.holder}.getClassInfo("${v}")`;
+  }
+}
+
+class TypeMetaResolverBuilder {
+  constructor(private holder: string) {
+
+  }
+
+  ownName() {
+    return this.holder;
+  }
+
+  writeTypeMeta(classInfo: string, writer: string, bytes: string) {
+    return `${this.holder}.writeTypeMeta(${classInfo}, ${writer}, ${bytes})`;
+  }
+
+  readTypeMeta(reader: string) {
+    return `${this.holder}.readTypeMeta(${reader})`;
+  }
+
+  genSerializerByTypeMetaRuntime(typeMeta: string, ns: string, typeName: string) {
+    return `${this.holder}.genSerializerByTypeMetaRuntime(${typeMeta}, ${ns}, ${typeName})`;
+  }
+}
+
+class MetaStringResolverBuilder {
+  constructor(private holder: string) {
+
+  }
+
+  ownName() {
+    return this.holder;
+  }
+
+  writeBytes(writer: string, bytes: string) {
+    return `${this.holder}.writeBytes(${writer}, ${bytes})`;
+  }
+
+  readTypeName(reader: string) {
+    return `${this.holder}.readTypeName(${reader})`;
+  }
+
+  readNamespace(reader: string) {
+    return `${this.holder}.readNamespace(${reader})`;
+  }
+
+  encodeNamespace(input: string) {
+    return `${this.holder}.encodeNamespace("${input}")`;
+  }
+
+  encodeTypeName(input: string) {
+    return `${this.holder}.encodeTypeName("${input}")`;
   }
 }
 
@@ -322,6 +368,8 @@ export class CodecBuilder {
   typeMeta: TypeMetaBuilder; // Use the TypeMetaWrapper
   referenceResolver: ReferenceResolverBuilder;
   classResolver: ClassResolverBuilder;
+  typeMetaResolver: TypeMetaResolverBuilder;
+  metaStringResolver: MetaStringResolverBuilder;
 
   constructor(scope: Scope, public fury: Fury) {
     const br = scope.declareByName("br", "fury.binaryReader");
@@ -333,18 +381,8 @@ export class CodecBuilder {
     this.classResolver = new ClassResolverBuilder(cr);
     this.referenceResolver = new ReferenceResolverBuilder(rr);
     this.typeMeta = new TypeMetaBuilder("fury"); // Initialize the TypeMetaWrapper
-  }
-
-  furyName() {
-    return "fury";
-  }
-
-  meta(description: TypeDescription) {
-    return getMeta(description, this.fury);
-  }
-
-  config() {
-    return this.fury.config;
+    this.typeMetaResolver = new TypeMetaResolverBuilder("fury.typeMetaResolver");
+    this.metaStringResolver = new MetaStringResolverBuilder("fury.metaStringResolver");
   }
 
   static isReserved(key: string) {
@@ -380,11 +418,19 @@ export class CodecBuilder {
     return prop;
   }
 
+  getFuryName() {
+    return "fury";
+  }
+
   getExternal(key: string) {
     return `external.${key}`;
   }
 
   getOptions(key: string) {
     return `options.${key}`;
+  }
+
+  getClassInfo() {
+    return "classInfo";
   }
 }

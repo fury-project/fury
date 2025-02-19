@@ -1,6 +1,6 @@
 {
   "name": "@furyjs/fury",
-  "version": "0.10.0.dev",
+  "version": "0.11.0.dev",
   "description": "Apache Fury™(incubating) is a blazingly fast multi-language serialization framework powered by jit and zero-copy",
   "main": "dist/index.js",
   "scripts": {

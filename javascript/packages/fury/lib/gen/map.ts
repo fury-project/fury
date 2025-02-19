@@ -17,9 +17,9 @@
  * under the License.
  */
 
-import { MapTypeDescription, TypeDescription } from "../description";
+import { MapClassInfo, ClassInfo } from "../classInfo";
 import { CodecBuilder } from "./builder";
-import { BaseSerializerGenerator, RefState } from "./serializer";
+import { BaseSerializerGenerator, RefState, SerializerGenerator } from "./serializer";
 import { CodegenRegistry } from "./router";
 import { InternalSerializerType, RefFlags, Serializer } from "../type";
 import { Scope } from "./scope";
@@ -43,7 +43,7 @@ class MapTypeInfo {
   private static IS_NULL = 0b10;
   private static TRACKING_REF = 0b01;
   static elementInfo(typeId: number, isNull: 0 | 1, trackRef: 0 | 1) {
-    return typeId << 16 | isNull << 1 | trackRef;
+    return (typeId << 16) | (isNull << 1) | trackRef;
   }
 
   static isNull(info: number) {
@@ -165,8 +165,8 @@ class MapAnySerializer {
       const valueSerializer = this.valueSerializer !== null ? this.valueSerializer : this.fury.classResolver.getSerializerByData(v);
 
       const header = mapChunkWriter.next(
-        MapTypeInfo.elementInfo(keySerializer!.meta.typeId!, k == null ? 1 : 0, keySerializer!.meta.needToWriteRef ? 1 : 0),
-        MapTypeInfo.elementInfo(valueSerializer!.meta.typeId!, v == null ? 1 : 0, valueSerializer!.meta.needToWriteRef ? 1 : 0)
+        MapTypeInfo.elementInfo(keySerializer!.getTypeId()!, k == null ? 1 : 0, keySerializer!.needToWriteRef() ? 1 : 0),
+        MapTypeInfo.elementInfo(valueSerializer!.getTypeId()!, v == null ? 1 : 0, valueSerializer!.needToWriteRef() ? 1 : 0)
       );
 
       this.writeHead(header >> 4, k);
@@ -190,7 +190,7 @@ class MapAnySerializer {
       flag = this.fury.binaryReader.uint8();
     }
     if (!isSame) {
-      serializer = this.fury.classResolver.getSerializerByType(this.fury.binaryReader.int16());
+      serializer = this.fury.classResolver.getSerializerById(this.fury.binaryReader.int16());
     }
     switch (flag) {
       case RefFlags.RefValueFlag:
@@ -238,41 +238,27 @@ class MapAnySerializer {
 }
 
 export class MapSerializerGenerator extends BaseSerializerGenerator {
-  description: MapTypeDescription;
+  classInfo: MapClassInfo;
+  keyGenerator: SerializerGenerator;
+  valueGenerator: SerializerGenerator;
 
-  constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-    super(description, builder, scope);
-    this.description = <MapTypeDescription>description;
-  }
-
-  private innerMeta() {
-    const inner = this.description;
-    return [this.builder.meta(inner.options.key), this.builder.meta(inner.options.value)];
-  }
-
-  private innerGenerator(description: TypeDescription) {
-    const inner = this.builder.meta(description);
-    const InnerGeneratorClass = CodegenRegistry.get(inner.type);
-    if (!InnerGeneratorClass) {
-      throw new Error(`${inner.type} generator not exists`);
-    }
-    return new InnerGeneratorClass(inner, this.builder, this.scope);
+  constructor(classinfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+    super(classinfo, builder, scope);
+    this.classInfo = <MapClassInfo>classinfo;
+    this.keyGenerator = CodegenRegistry.newGeneratorByClassInfo(this.classInfo.options.key, this.builder, this.scope);
+    this.valueGenerator = CodegenRegistry.newGeneratorByClassInfo(this.classInfo.options.value, this.builder, this.scope);
   }
 
   private isAny() {
-    const [keyMeta, valueMeta] = this.innerMeta();
-    return keyMeta.type === InternalSerializerType.ANY || valueMeta.type === InternalSerializerType.ANY;
+    return this.classInfo.options.key.type === InternalSerializerType.ANY || this.classInfo.options.value.type === InternalSerializerType.ANY;
   }
 
   private writeStmtSpecificType(accessor: string) {
-    const [keyMeta, valueMeta] = this.innerMeta();
-    const keyGenerator = this.innerGenerator(keyMeta);
-    const valueGenerator = this.innerGenerator(valueMeta);
     const k = this.scope.uniqueName("k");
     const v = this.scope.uniqueName("v");
-    const keyHeader = (keyMeta.needToWriteRef ? MapFlags.TRACKING_REF : 0);
-    const valueHeader = (keyMeta.needToWriteRef ? MapFlags.TRACKING_REF : 0);
-    const typeId = (keyMeta.typeId! << 8) | valueMeta.typeId!;
+    const keyHeader = (this.keyGenerator.needToWriteRef() ? MapFlags.TRACKING_REF : 0);
+    const valueHeader = (this.valueGenerator.needToWriteRef() ? MapFlags.TRACKING_REF : 0);
+    const typeId = (this.keyGenerator.getTypeId()! << 8) | (this.valueGenerator.getTypeId()!);
     const lastKeyIsNull = this.scope.uniqueName("lastKeyIsNull");
     const lastValueIsNull = this.scope.uniqueName("lastValueIsNull");
     const chunkSize = this.scope.uniqueName("chunkSize");
@@ -299,7 +285,7 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
           ${chunkSizeOffset} = ${this.builder.writer.getCursor()}
           ${
             this.builder.writer.uint16(
-              `((${keyHeader} & (keyIsNull ? ${MapFlags.HAS_NULL} : 0)) << 4) | (${valueHeader} & (valueIsNull ? ${MapFlags.HAS_NULL} : 0)) << 8`
+              `(((${keyHeader} | (keyIsNull ? ${MapFlags.HAS_NULL} : 0)) << 4) | (${valueHeader} | (valueIsNull ? ${MapFlags.HAS_NULL} : 0))) << 8`
             )
           }
           ${this.builder.writer.uint32(typeId)};
@@ -310,7 +296,7 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
         if (keyIsNull) {
           ${this.builder.writer.uint8(RefFlags.NullFlag)}
         }
-        ${keyMeta.needToWriteRef
+        ${this.keyGenerator.needToWriteRef()
 ? `
             const ${keyRef} = ${this.builder.referenceResolver.existsWriteObject(v)};
             if (${keyRef} !== undefined) {
@@ -318,15 +304,16 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
               ${this.builder.writer.uint16(keyRef)};
             } else {
               ${this.builder.writer.uint8(RefFlags.RefValueFlag)};
+              ${this.keyGenerator.toWriteEmbed(k, true)}
             }
         `
-: ""}
-        ${keyGenerator.toWriteEmbed(k, true)}
+: this.keyGenerator.toWriteEmbed(k, true)}
+       
 
         if (valueIsNull) {
           ${this.builder.writer.uint8(RefFlags.NullFlag)}
         }
-        ${valueMeta.needToWriteRef
+        ${this.valueGenerator.needToWriteRef()
 ? `
             const ${valueRef} = ${this.builder.referenceResolver.existsWriteObject(v)};
             if (${valueRef} !== undefined) {
@@ -334,10 +321,11 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
               ${this.builder.writer.uint16(valueRef)};
             } else {
               ${this.builder.writer.uint8(RefFlags.RefValueFlag)};
+              ${this.valueGenerator.toWriteEmbed(v, true)};
             }
         `
-: ""}
-        ${valueGenerator.toWriteEmbed(v, true)}
+: this.valueGenerator.toWriteEmbed(v, true)}
+        
 
         ${chunkSize}++;
       }
@@ -348,20 +336,20 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
   }
 
   writeStmt(accessor: string): string {
-    const [keyMeta, valueMeta] = this.innerMeta();
     const anySerializer = this.builder.getExternal(MapAnySerializer.name);
     if (!this.isAny()) {
       return this.writeStmtSpecificType(accessor);
     }
-    return `new (${anySerializer})(${this.builder.furyName()}, ${keyMeta.typeId}, ${valueMeta.typeId}).write(${accessor})`;
+    return `new (${anySerializer})(${this.builder.getFuryName()}, ${
+      this.classInfo.options.key.type !== InternalSerializerType.ANY ? this.classInfo.options.key.typeId : null
+    }, ${
+      this.classInfo.options.value.type !== InternalSerializerType.ANY ? this.classInfo.options.value.typeId : null
+    }).write(${accessor})`;
   }
 
   private readStmtSpecificType(accessor: (expr: string) => string, refState: RefState) {
     const count = this.scope.uniqueName("count");
     const result = this.scope.uniqueName("result");
-    const [keyMeta, valueMeta] = this.innerMeta();
-    const keyGenerator = this.innerGenerator(keyMeta);
-    const valueGenerator = this.innerGenerator(valueMeta);
 
     return `
       let ${count} = ${this.builder.reader.varInt32()};
@@ -389,7 +377,7 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
           }
           switch (flag) {
             case ${RefFlags.RefValueFlag}:
-              ${keyGenerator.toReadEmbed(x => `key = ${x}`, true, RefState.fromTrue())}
+              ${this.keyGenerator.toReadEmbed(x => `key = ${x}`, true, RefState.fromTrue())}
               break;
             case ${RefFlags.RefFlag}:
               key = ${this.builder.referenceResolver.getReadObject(this.builder.reader.varInt32())}
@@ -398,7 +386,7 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
               key = null;
               break;
             case ${RefFlags.NotNullValueFlag}:
-              ${keyGenerator.toReadEmbed(x => `key = ${x}`, true, RefState.fromFalse())}
+              ${this.keyGenerator.toReadEmbed(x => `key = ${x}`, true, RefState.fromFalse())}
               break;
           }
           flag = 0;
@@ -407,7 +395,7 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
           }
           switch (flag) {
             case ${RefFlags.RefValueFlag}:
-              ${valueGenerator.toReadEmbed(x => `value = ${x}`, true, RefState.fromTrue())}
+              ${this.valueGenerator.toReadEmbed(x => `value = ${x}`, true, RefState.fromTrue())}
               break;
             case ${RefFlags.RefFlag}:
               value = ${this.builder.referenceResolver.getReadObject(this.builder.reader.varInt32())}
@@ -416,7 +404,7 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
               value = null;
               break;
             case ${RefFlags.NotNullValueFlag}:
-              ${valueGenerator.toReadEmbed(x => `value = ${x}`, true, RefState.fromFalse())}
+              ${this.valueGenerator.toReadEmbed(x => `value = ${x}`, true, RefState.fromFalse())}
               break;
           }
           ${result}.set(
@@ -432,11 +420,22 @@ export class MapSerializerGenerator extends BaseSerializerGenerator {
 
   readStmt(accessor: (expr: string) => string, refState: RefState): string {
     const anySerializer = this.builder.getExternal(MapAnySerializer.name);
-    const [keyMeta, valueMeta] = this.innerMeta();
     if (!this.isAny()) {
       return this.readStmtSpecificType(accessor, refState);
     }
-    return accessor(`new (${anySerializer})(${this.builder.furyName()}, ${keyMeta.typeId}, ${valueMeta.typeId}).read(${refState.toConditionExpr()})`);
+    return accessor(`new (${anySerializer})(${this.builder.getFuryName()}, ${
+      this.classInfo.options.key.type !== InternalSerializerType.ANY ? (this.classInfo.options.key.typeId) : null
+    }, ${
+      this.classInfo.options.value.type !== InternalSerializerType.ANY ? (this.classInfo.options.value.typeId) : null
+    }).read(${refState.toConditionExpr()})`);
+  }
+
+  getFixedSize(): number {
+    return 7;
+  }
+
+  needToWriteRef(): boolean {
+    return Boolean(this.builder.fury.config.refTracking);
   }
 }
 

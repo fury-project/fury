@@ -19,7 +19,7 @@
 
 import { fromUint8Array, alloc, BrowserBuffer } from '../packages/fury/lib/platformBuffer';
 import { describe, expect, test } from '@jest/globals';
-import Fury, { TypeDescription, InternalSerializerType } from '../packages/fury/index';
+import Fury, { ClassInfo, InternalSerializerType } from '../packages/fury/index';
 import { RefFlags } from '../packages/fury/lib/type';
 import { BinaryWriter } from '../packages/fury/lib/writer';
 import { BinaryReader } from '../packages/fury/lib/reader';
@@ -41,7 +41,6 @@ describe('referenceResolve', () => {
         const reader = new BinaryReader({});
         reader.reset(ab);
         expect(reader.int8()).toBe(RefFlags.NotNullValueFlag);
-        expect(reader.int16()).toBe(SerializerResolver.getTypeIdByInternalSerializerType(InternalSerializerType.STRING));
     });
 
     test('should make head work when flag is zero', () => {
@@ -52,7 +51,6 @@ describe('referenceResolve', () => {
         const reader = new BinaryReader({});
         reader.reset(ab);
         expect(reader.int8()).toBe(RefFlags.RefValueFlag);
-        expect(reader.int16()).toBe(SerializerResolver.getTypeIdByInternalSerializerType(InternalSerializerType.STRING));
     });
 });
 

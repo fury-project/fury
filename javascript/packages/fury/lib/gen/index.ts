@@ -17,13 +17,13 @@
  * under the License.
  */
 
-import { InternalSerializerType } from "../type";
-import { ArrayTypeDescription, MapTypeDescription, ObjectTypeDescription, OneofTypeDescription, SetTypeDescription, TupleTypeDescription, TypeDescription } from "../description";
+import { InternalSerializerType, Serializer } from "../type";
+import { ArrayClassInfo, MapClassInfo, StructClassInfo, OneofClassInfo, SetClassInfo, TupleClassInfo, ClassInfo } from "../classInfo";
 import { CodegenRegistry } from "./router";
 import { CodecBuilder } from "./builder";
 import { Scope } from "./scope";
 import "./array";
-import "./object";
+import "./struct";
 import "./string";
 import "./binary";
 import "./bool";
@@ -31,76 +31,94 @@ import "./datetime";
 import "./map";
 import "./number";
 import "./set";
+import "./struct";
 import "./tuple";
 import "./typedArray";
-import Fury from "../fury";
 import "./enum";
+import Fury from "../fury";
 
 export { AnySerializer } from "./any";
 
-const external = CodegenRegistry.getExternal();
+export class Gen {
+  static external = CodegenRegistry.getExternal();
 
-export const generate = (fury: Fury, description: TypeDescription) => {
-  const InnerGeneratorClass = CodegenRegistry.get(description.type);
-  if (!InnerGeneratorClass) {
-    throw new Error(`${description.type} generator not exists`);
+  constructor(private fury: Fury, private replace = false, private regOptions: { [key: string]: any } = {}) {
+
   }
-  const scope = new Scope();
-  const generator = new InnerGeneratorClass(description, new CodecBuilder(scope, fury), scope);
 
-  const funcString = generator.toSerializer();
-  if (fury.config && fury.config.hooks) {
-    const afterCodeGenerated = fury.config.hooks.afterCodeGenerated;
-    if (typeof afterCodeGenerated === "function") {
-      return new Function(afterCodeGenerated(funcString));
+  private generate(classInfo: ClassInfo) {
+    const InnerGeneratorClass = CodegenRegistry.get(classInfo.type);
+    if (!InnerGeneratorClass) {
+      throw new Error(`${classInfo.type} generator not exists`);
     }
+    const scope = new Scope();
+    const generator = new InnerGeneratorClass(classInfo, new CodecBuilder(scope, this.fury), scope);
+
+    const funcString = generator.toSerializer();
+    if (this.fury.config && this.fury.config.hooks) {
+      const afterCodeGenerated = this.fury.config.hooks.afterCodeGenerated;
+      if (typeof afterCodeGenerated === "function") {
+        return new Function(afterCodeGenerated(funcString));
+      }
+    }
+    return new Function(funcString);
   }
 
-  return new Function(funcString);
-};
+  private register(classInfo: StructClassInfo, serializer?: Serializer) {
+    this.fury.classResolver.registerSerializer(classInfo, serializer);
+  }
 
-function regDependencies(fury: Fury, description: TypeDescription, regOptions: { [key: string]: any } = {}) {
-  if (description.type === InternalSerializerType.OBJECT) {
-    const options = (<ObjectTypeDescription>description).options;
-    if (options.props) {
-      fury.classResolver.registerSerializerByTag(options.tag);
-      Object.values(options.props).forEach((x) => {
-        regDependencies(fury, x);
+  private isRegistered(classInfo: ClassInfo) {
+    return !!this.fury.classResolver.classInfoExists(classInfo);
+  }
+
+  private traversalContainer(classInfo: ClassInfo) {
+    if (classInfo.type === InternalSerializerType.STRUCT) {
+      if (this.isRegistered(classInfo) && !this.replace) {
+        return;
+      }
+      const options = (<StructClassInfo>classInfo).options;
+      if (options.props) {
+        this.register(<StructClassInfo>classInfo);
+        Object.values(options.props).forEach((x) => {
+          this.traversalContainer(x);
+        });
+        const func = this.generate(classInfo);
+        this.register(<StructClassInfo>classInfo, func()(this.fury, Gen.external, classInfo, this.regOptions));
+      }
+    }
+    if (classInfo.type === InternalSerializerType.ARRAY) {
+      this.traversalContainer((<ArrayClassInfo>classInfo).options.inner);
+    }
+    if (classInfo.type === InternalSerializerType.SET) {
+      this.traversalContainer((<SetClassInfo>classInfo).options.key);
+    }
+    if (classInfo.type === InternalSerializerType.MAP) {
+      this.traversalContainer((<MapClassInfo>classInfo).options.key);
+      this.traversalContainer((<MapClassInfo>classInfo).options.value);
+    }
+    if (classInfo.type === InternalSerializerType.TUPLE) {
+      (<TupleClassInfo>classInfo).options.inner.forEach((x) => {
+        this.traversalContainer(x);
       });
-      const func = generate(fury, description);
-      fury.classResolver.registerSerializerByTag(options.tag, func()(fury, external, regOptions));
+    }
+    if (classInfo.type === InternalSerializerType.ONEOF) {
+      const options = (<OneofClassInfo>classInfo).options;
+      if (options.inner) {
+        Object.values(options.inner).forEach((x) => {
+          this.traversalContainer(x);
+        });
+      }
     }
   }
-  if (description.type === InternalSerializerType.ARRAY) {
-    regDependencies(fury, (<ArrayTypeDescription>description).options.inner);
-  }
-  if (description.type === InternalSerializerType.SET) {
-    regDependencies(fury, (<SetTypeDescription>description).options.key);
-  }
-  if (description.type === InternalSerializerType.MAP) {
-    regDependencies(fury, (<MapTypeDescription>description).options.key);
-    regDependencies(fury, (<MapTypeDescription>description).options.value);
-  }
-  if (description.type === InternalSerializerType.TUPLE) {
-    (<TupleTypeDescription>description).options.inner.forEach((x) => {
-      regDependencies(fury, x);
-    });
-  }
-  if (description.type === InternalSerializerType.ONEOF) {
-    const options = (<OneofTypeDescription>description).options;
-    if (options.inner) {
-      Object.values(options.inner).forEach((x) => {
-        regDependencies(fury, x);
-      });
+
+  generateSerializer(classInfo: ClassInfo) {
+    this.traversalContainer(classInfo);
+    const exists = this.isRegistered(classInfo);
+    if (exists) {
+      return this.fury.classResolver.getSerializerByClassInfo(classInfo);
     }
+    const func = this.generate(classInfo);
+    return func()(this.fury, Gen.external, classInfo, this.regOptions);
   }
 }
-
-export const generateSerializer = (fury: Fury, description: TypeDescription, options: { [key: string]: any } = {}) => {
-  regDependencies(fury, description, options);
-  if (description.type === InternalSerializerType.OBJECT) {
-    return fury.classResolver.getSerializerByTag((<ObjectTypeDescription>description).options.tag);
-  }
-  const func = generate(fury, description);
-  return func()(fury, external, options);
-};

@@ -19,12 +19,12 @@
 
 import Fury from '../packages/fury/index';
 import { describe, expect, test } from '@jest/globals';
-import { tupleObjectDescription, tupleObjectType3Description } from './fixtures/tuple';
+import { tupleObjectClassInfo, tupleObjectType3ClassInfo } from './fixtures/tuple';
 
 describe('tuple', () => {
   test('should tuple work', () => {
     const fury = new Fury({ refTracking: true });
-    const { serialize, deserialize } = fury.registerSerializer(tupleObjectDescription);
+    const { serialize, deserialize } = fury.registerSerializer(tupleObjectClassInfo);
     const tuple1 = [{a: {b:'1'}}, {a: {c: '2'}}] as [{a: {b: string}}, {a: {c: string}}];
     const tuple2 =  [{a: {b:'1'}}, {a: {b:'1'}}, {a: {c: '2'}}] as [{a: {b: string}}, {a: {b: string}}, {a: {c: string}}];
     const raw = {
@@ -49,12 +49,12 @@ describe('tuple', () => {
       [
         Buffer.alloc(10)
       ]
-    ]
+    ] as const
   };
 
   test('tuple support other types', () => {
     const fury = new Fury({ refTracking: true });
-    const { serialize, deserialize } = fury.registerSerializer(tupleObjectType3Description);
+    const { serialize, deserialize } = fury.registerSerializer(tupleObjectType3ClassInfo);
 
     const input = serialize(type3Raw);
     const result = deserialize(
@@ -64,7 +64,7 @@ describe('tuple', () => {
   });
   test('tuple will ignore items which index out of bounds', () => {
     const fury = new Fury({ refTracking: true });
-    const { serialize, deserialize } = fury.registerSerializer(tupleObjectType3Description);
+    const { serialize, deserialize } = fury.registerSerializer(tupleObjectType3ClassInfo);
     const raw = {
       tuple: [
         "1234",
@@ -72,11 +72,8 @@ describe('tuple', () => {
         2333,
         [
           Buffer.alloc(10)
-        ],
-        1234,
-        12345,
-        false
-      ]
+        ] as const,
+      ] as const
     };
  
     const input = serialize(raw);

@@ -17,21 +17,16 @@
  * under the License.
  */
 
-import { Type, TypeDescription } from "../description";
+import { ClassInfo } from "../classInfo";
 import { CodecBuilder } from "./builder";
 import { BaseSerializerGenerator } from "./serializer";
 import { CodegenRegistry } from "./router";
-import { InternalSerializerType, RefFlags, Serializer } from "../type";
+import { InternalSerializerType, RefFlags, Serializer, TypeId } from "../type";
 import { Scope } from "./scope";
 import Fury from "../fury";
-import { Meta, getMeta } from "../meta";
-import SerializerResolver from "../classResolver";
 
 export class AnySerializer {
-  meta: Meta;
-
   constructor(private fury: Fury) {
-    this.meta = getMeta(Type.any(), fury);
   }
 
   readInner() {
@@ -45,9 +40,10 @@ export class AnySerializer {
   detectSerializer() {
     const typeId = this.fury.binaryReader.int16();
     let serializer: Serializer | undefined;
-    if (typeId === SerializerResolver.getTypeIdByInternalSerializerType(InternalSerializerType.OBJECT)) {
-      const tag = this.fury.classResolver.readTag(this.fury.binaryReader)();
-      serializer = this.fury.classResolver.getSerializerByTag(tag);
+    if (TypeId.IS_NAMED_TYPE(typeId)) {
+      const ns = this.fury.metaStringResolver.readNamespace(this.fury.binaryReader);
+      const typeName = this.fury.metaStringResolver.readTypeName(this.fury.binaryReader);
+      serializer = this.fury.classResolver.getSerializerByName(`${ns}$${typeName}`);
     } else {
       serializer = this.fury.classResolver.getSerializerById(typeId);
     }
@@ -82,17 +78,27 @@ export class AnySerializer {
     if (!serializer) {
       throw new Error(`Failed to detect the Fury serializer from JavaScript type: ${typeof v}`);
     }
-    this.fury.binaryWriter.reserve(serializer.meta.fixedSize);
+    this.fury.binaryWriter.reserve(serializer.fixedSize);
     serializer.write(v);
+  }
+
+  fixedSize = 11;
+
+  needToWriteRef(): boolean {
+    throw new Error("//todo unreachable code");
+  }
+
+  getTypeId(): number {
+    throw new Error("//todo unreachable code");
   }
 }
 
 class AnySerializerGenerator extends BaseSerializerGenerator {
-  description: TypeDescription;
+  classInfo: ClassInfo;
 
-  constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-    super(description, builder, scope);
-    this.description = description;
+  constructor(classinfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+    super(classinfo, builder, scope);
+    this.classInfo = classinfo;
   }
 
   writeStmt(): string {
@@ -107,14 +113,14 @@ class AnySerializerGenerator extends BaseSerializerGenerator {
     if (excludeHead) {
       throw new Error("Anonymous can't excludeHead");
     }
-    return accessor(`${this.builder.furyName()}.anySerializer.read()`);
+    return accessor(`${this.builder.getFuryName()}.anySerializer.read()`);
   }
 
   toWriteEmbed(accessor: string, excludeHead = false): string {
     if (excludeHead) {
       throw new Error("Anonymous can't excludeHead");
     }
-    return `${this.builder.furyName()}.anySerializer.write(${accessor})`;
+    return `${this.builder.getFuryName()}.anySerializer.write(${accessor})`;
   }
 
   toSerializer() {
@@ -146,10 +152,21 @@ class AnySerializerGenerator extends BaseSerializerGenerator {
               readInner,
               write,
               writeInner,
-              meta: ${JSON.stringify(this.builder.meta(this.description))}
+              fixedSize: ${this.getFixedSize()},
+              needToWriteRef() {
+                throw new Error("//todo unreachable code");
+              }
             };
         }
         `;
+  }
+
+  getFixedSize(): number {
+    return 11;
+  }
+
+  needToWriteRef(): boolean {
+    throw new Error("//todo unreachable code");
   }
 }
 

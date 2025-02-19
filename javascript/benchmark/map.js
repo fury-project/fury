@@ -32,12 +32,12 @@ const Type = Fury.Type;
 
 
 
-const { serialize: serialize1, deserialize: deserialize1, serializeVolatile: serializeVolatile1 } = fury.registerSerializer(Type.object("any", {
+const { serialize: serialize1, deserialize: deserialize1, serializeVolatile: serializeVolatile1 } = fury.registerSerializer(Type.struct("any", {
   f1: Type.map(Type.any(), Type.any()),
   f2: Type.map(Type.any(), Type.any())
 }));
 
-const { serialize: serialize2, deserialize: deserialize2, serializeVolatile: serializeVolatile2 } = fury.registerSerializer(Type.object("specific", {
+const { serialize: serialize2, deserialize: deserialize2, serializeVolatile: serializeVolatile2 } = fury.registerSerializer(Type.struct("specific", {
   f1: Type.map(Type.string(), Type.string()),
   f2: Type.map(Type.int32(), Type.string())
 }));

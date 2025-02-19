@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import Fury, { TypeDescription, InternalSerializerType, Type } from '../packages/fury/index';
+import Fury, { ClassInfo, InternalSerializerType, Type } from '../packages/fury/index';
 import {describe, expect, test} from '@jest/globals';
 
 describe('enum', () => {
@@ -27,7 +27,7 @@ describe('enum', () => {
             f2: 2
         }
         const fury = new Fury({ refTracking: true });   
-        const {serialize, deserialize} = fury.registerSerializer(Type.enum(Foo)) 
+        const {serialize, deserialize} = fury.registerSerializer(Type.enum("example.foo", Foo)) 
         const input = serialize(Foo.f1);
         const result = deserialize(
             input
@@ -41,7 +41,7 @@ describe('enum', () => {
             f2: "world"
         }
         const fury = new Fury({ refTracking: true });   
-        fury.registerSerializer(Type.enum(Foo)) 
+        fury.registerSerializer(Type.enum("example.foo", Foo)) 
         const input = fury.serialize(Foo.f1);
         const result = fury.deserialize(
             input
@@ -54,7 +54,7 @@ describe('enum', () => {
         f2 = 2
     }
     const fury = new Fury({ refTracking: true });   
-    const {serialize, deserialize} = fury.registerSerializer(Type.enum(Foo)) 
+    const {serialize, deserialize} = fury.registerSerializer(Type.enum("example.foo", Foo)) 
     const input = serialize(Foo.f1);
     const result = deserialize(
         input
@@ -68,7 +68,7 @@ describe('enum', () => {
         f2 = "world"
     }
     const fury = new Fury({ refTracking: true });   
-    fury.registerSerializer(Type.enum(Foo)) 
+    fury.registerSerializer(Type.enum("example.foo", Foo)) 
     const input = fury.serialize(Foo.f1);
     const result = fury.deserialize(
         input

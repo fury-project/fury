@@ -17,24 +17,18 @@
  * under the License.
  */
 
-import Fury, { TypeDescription, InternalSerializerType, Type } from '../packages/fury/index';
+import Fury, { ClassInfo, InternalSerializerType, Type } from '../packages/fury/index';
 import { describe, expect, test } from '@jest/globals';
 
 describe('number', () => {
   test('should i8 work', () => {
     
     const fury = new Fury({ refTracking: true });    
-    const serialize = fury.registerSerializer({
-      type: InternalSerializerType.OBJECT,
-      options: {
-        tag: "example.foo",
-        props: {
-          a: {
-            type: InternalSerializerType.INT8
-          }
-        }
-      }
-    }).serializer;
+    const serialize = fury.registerSerializer(Type.struct({
+      typeName: "example.foo"
+    }, {
+      a: Type.int8()
+    })).serializer;
     const input = fury.serialize({ a: 1 }, serialize);
     const result = fury.deserialize(
       input
@@ -44,17 +38,11 @@ describe('number', () => {
   test('should i16 work', () => {
     
     const fury = new Fury({ refTracking: true });    
-    const serialize = fury.registerSerializer({
-      type: InternalSerializerType.OBJECT,
-      options: {
-        tag: "example.foo",
-        props: {
-          a: {
-            type: InternalSerializerType.INT16,
-          }
-        }
-      }
-    }).serializer;
+    const serialize = fury.registerSerializer(Type.struct({
+      typeName: "example.foo"
+    }, {
+      a: Type.int16()
+    })).serializer;
     const input = fury.serialize({ a: 1 }, serialize);
     const result = fury.deserialize(
       input
@@ -64,17 +52,11 @@ describe('number', () => {
   test('should i32 work', () => {
     
     const fury = new Fury({ refTracking: true });    
-    const serializer = fury.registerSerializer({
-      type: InternalSerializerType.OBJECT,
-      options: {
-        tag: "example.foo",
-        props: {
-          a: {
-            type: InternalSerializerType.INT32,
-          }
-        }
-      }
-    }).serializer;
+    const serializer = fury.registerSerializer(Type.struct({
+      typeName: "example.foo"
+    }, {
+      a: Type.int32()
+    })).serializer;
     const input = fury.serialize({ a: 1 }, serializer);
     const result = fury.deserialize(
       input
@@ -84,17 +66,11 @@ describe('number', () => {
   test('should i64 work', () => {
     
     const fury = new Fury({ refTracking: true });    
-    const serializer = fury.registerSerializer({
-      type: InternalSerializerType.OBJECT,
-      options: {
-        tag: "example.foo",
-        props: {
-          a: {
-            type: InternalSerializerType.INT64
-          }
-        }
-      }
-    }).serializer;
+    const serializer = fury.registerSerializer(Type.struct({
+      typeName: "example.foo"
+    }, {
+      a: Type.int64()
+    })).serializer;
     const input = fury.serialize({ a: 1 }, serializer);
     const result = fury.deserialize(
       input
@@ -106,17 +82,11 @@ describe('number', () => {
   test('should float work', () => {
     
     const fury = new Fury({ refTracking: true });    
-    const serializer = fury.registerSerializer({
-      type: InternalSerializerType.OBJECT,
-      options: {
-        tag: "example.foo",
-        props: {
-          a: {
-            type: InternalSerializerType.FLOAT32
-          }
-        }
-      }
-    }).serializer;
+    const serializer = fury.registerSerializer(Type.struct({
+      typeName: "example.foo"
+    }, {
+      a: Type.float32()
+    })).serializer;
     const input = fury.serialize({ a: 1.2 }, serializer);
     const result = fury.deserialize(
       input
@@ -126,17 +96,11 @@ describe('number', () => {
   test('should float64 work', () => {
     
     const fury = new Fury({ refTracking: true });    
-    const serializer = fury.registerSerializer({
-      type: InternalSerializerType.OBJECT,
-      options: {
-        tag: "example.foo",
-        props: {
-          a: {
-            type: InternalSerializerType.FLOAT64
-          }
-        }
-      }
-    }).serializer;
+    const serializer = fury.registerSerializer(Type.struct({
+      typeName: "example.foo"
+    }, {
+      a: Type.float64()
+    })).serializer;
     const input = fury.serialize({ a: 1.2 }, serializer);
     const result = fury.deserialize(
       input

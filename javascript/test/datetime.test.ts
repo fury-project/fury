@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import Fury, { TypeDescription, InternalSerializerType, Type } from '../packages/fury/index';
+import Fury, { ClassInfo, InternalSerializerType, Type } from '../packages/fury/index';
 import {describe, expect, test} from '@jest/globals';
 
 describe('datetime', () => {
@@ -32,12 +32,12 @@ describe('datetime', () => {
     expect(result).toEqual(now)
   });
   test('should datetime work', () => {
-    const description = Type.object("example.foo", {
+    const classinfo = Type.struct("example.foo", {
       a: Type.timestamp(),
       b: Type.duration(),
     })
     const fury = new Fury({ refTracking: true });    
-    const serializer = fury.registerSerializer(description).serializer;
+    const serializer = fury.registerSerializer(classinfo).serializer;
     const d = new Date('2021/10/20 09:13');
     const input = fury.serialize({ a:  d, b: d}, serializer);
     const result = fury.deserialize(

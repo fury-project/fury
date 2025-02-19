@@ -29,6 +29,68 @@ const assert = require('assert');
 const { spawn } = require("child_process");
 
 
+export const data2ClassInfo = (
+  data,
+  typeName,
+) => {
+  if (data === null || data === undefined) {
+    return null;
+  }
+  if (Array.isArray(data)) {
+    const item = data2ClassInfo(data[0], typeName);
+    if (!item) {
+      throw new Error("empty array can't convert");
+    }
+    return Type.array(item);
+  }
+  if (data instanceof Date) {
+    return Type.timestamp();
+  }
+  if (typeof data === "string") {
+    return Type.string();
+  }
+  if (data instanceof Set) {
+    return Type.set(data2ClassInfo([...data.values()][0], typeName));
+  }
+  if (data instanceof Map) {
+    return Type.map(
+      data2ClassInfo([...data.keys()][0], typeName),
+      data2ClassInfo([...data.values()][0], typeName),
+    );
+  }
+  if (typeof data === "boolean") {
+    return Type.bool();
+  }
+  if (typeof data === "number") {
+    if (data > Number.MAX_SAFE_INTEGER || data < Number.MIN_SAFE_INTEGER) {
+      return Type.int64();
+    }
+    return Type.int32();
+  }
+
+  if (typeof data === "object") {
+    if (isUint8Array(data)) {
+      return Type.binary();
+    }
+
+    return Type.struct(
+      {
+        typeName
+      },
+      Object.fromEntries(
+        Object.entries(data)
+          .map(([key, value]) => {
+            return [key, data2ClassInfo(value, `${typeName}.${key}`)];
+          })
+          .filter(([, v]) => Boolean(v)),
+      ),
+    );
+  }
+
+  throw new Error(`unkonw data type ${typeof data}`);
+};
+
+
 const sample = {
   id: 123456,
   name: "John Doe",
@@ -108,8 +170,8 @@ const sample = {
 };
 
 
-const description = utils.data2Description(sample, "fury.test.foo");
-const { serialize, deserialize, serializeVolatile } = fury.registerSerializer(description);
+const classinfo = utils.data2ClassInfo(sample, "fury.test.foo");
+const { serialize, deserialize, serializeVolatile } = fury.registerSerializer(classinfo);
 
 const furyAb = serialize(sample);
 const sampleJson = JSON.stringify(sample);

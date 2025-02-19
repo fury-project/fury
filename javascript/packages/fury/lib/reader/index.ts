@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { Config, LATIN1, UTF16, UTF8 } from "../type";
+import { LATIN1, UTF16, UTF8 } from "../type";
 import { isNodeEnv } from "../util";
 import { PlatformBuffer, alloc, fromUint8Array } from "../platformBuffer";
 import { readLatin1String } from "./string";
@@ -30,7 +30,9 @@ export class BinaryReader {
   private bigString = "";
   private byteLength = 0;
 
-  constructor(config: Config) {
+  constructor(config: {
+    useSliceString?: boolean;
+  }) {
     this.sliceStringEnable = isNodeEnv && config.useSliceString;
   }
 

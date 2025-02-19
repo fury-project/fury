@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { Config, HalfMaxInt32, HalfMinInt32, LATIN1, UTF8 } from "../type";
+import { HalfMaxInt32, HalfMinInt32, Hps, LATIN1, UTF8 } from "../type";
 import { PlatformBuffer, alloc, strByteLength } from "../platformBuffer";
 import { OwnershipError } from "../error";
 import { toFloat16 } from "./number";
@@ -31,10 +31,15 @@ export class BinaryWriter {
   private dataView!: DataView;
   private reserved = 0;
   private locked = false;
-  private config: Config;
+  private config: {
+    hps?: Hps;
+  };
+
   private hpsEnable = false;
 
-  constructor(config: Config) {
+  constructor(config: {
+    hps?: Hps;
+  } = {}) {
     this.initPoll();
     this.config = config;
     this.hpsEnable = Boolean(config?.hps);

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import Fury, { TypeDescription, InternalSerializerType, Type } from '../packages/fury/index';
+import Fury, { ClassInfo, InternalSerializerType, Type } from '../packages/fury/index';
 import {describe, expect, test} from '@jest/globals';
 
 describe('map', () => {
@@ -34,7 +34,7 @@ describe('map', () => {
   test('should map specific type work', () => {
     
     const fury = new Fury({ refTracking: true });  
-    const { serialize, deserialize } = fury.registerSerializer(Type.object("class.foo", {
+    const { serialize, deserialize } = fury.registerSerializer(Type.struct("class.foo", {
       f1: Type.map(Type.string(), Type.varInt32())
     }))  
     const bin = serialize({

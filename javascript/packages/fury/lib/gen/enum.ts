@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { EnumTypeDescription, TypeDescription } from "../description";
+import { EnumClassInfo, ClassInfo } from "../classInfo";
 import { CodecBuilder } from "./builder";
 import { BaseSerializerGenerator } from "./serializer";
 import { CodegenRegistry } from "./router";
@@ -25,19 +25,19 @@ import { InternalSerializerType, MaxUInt32 } from "../type";
 import { Scope } from "./scope";
 
 class EnumSerializerGenerator extends BaseSerializerGenerator {
-  description: EnumTypeDescription;
+  classInfo: EnumClassInfo;
 
-  constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-    super(description, builder, scope);
-    this.description = <EnumTypeDescription>description;
+  constructor(classinfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+    super(classinfo, builder, scope);
+    this.classInfo = <EnumClassInfo>classinfo;
   }
 
   writeStmt(accessor: string): string {
-    if (Object.values(this.description.options.inner).length < 1) {
+    if (Object.values(this.classInfo.options.inner).length < 1) {
       throw new Error("An enum must contain at least one field");
     }
     return `
-        ${Object.values(this.description.options.inner).map((value, index) => {
+        ${Object.values(this.classInfo.options.inner).map((value, index) => {
             if (typeof value !== "string" && typeof value !== "number") {
                 throw new Error("Enum value must be string or number");
             }
@@ -62,7 +62,7 @@ class EnumSerializerGenerator extends BaseSerializerGenerator {
     return `
         const ${enumValue} = ${this.builder.reader.varUInt32()};
         switch(${enumValue}) {
-            ${Object.values(this.description.options.inner).map((value, index) => {
+            ${Object.values(this.classInfo.options.inner).map((value, index) => {
                 if (typeof value !== "string" && typeof value !== "number") {
                     throw new Error("Enum value must be string or number");
                 }
@@ -79,9 +79,17 @@ class EnumSerializerGenerator extends BaseSerializerGenerator {
                 `;
             }).join("\n")}
             default:
-                throw new Error("Enum received an unexpected value: " + enumValue);
+                throw new Error("Enum received an unexpected value: " + ${enumValue});
         }
     `;
+  }
+
+  getFixedSize(): number {
+    return 7;
+  }
+
+  needToWriteRef(): boolean {
+    return false;
   }
 }
 

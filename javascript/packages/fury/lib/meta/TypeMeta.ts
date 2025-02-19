@@ -19,26 +19,32 @@
 
 import { BinaryWriter } from "../writer";
 import { BinaryReader } from "../reader";
-import { MetaString } from "./MetaString";
+import { Encoding, MetaStringDecoder, MetaStringEncoder } from "./MetaString";
+import { StructClassInfo } from "../classInfo";
 
-enum Encoding {
-  Utf8,
-  AllToLowerSpecial,
-  LowerUpperDigitSpecial,
-}
+const fieldEncoder = new MetaStringEncoder("$", ".");
+const fieldDecoder = new MetaStringDecoder("$", ".");
 
-export class FieldInfo {
+class FieldInfo {
   constructor(private fieldName: string, private fieldId: number) {
+  }
+
+  getFieldName() {
+    return this.fieldName;
+  }
+
+  getFieldId() {
+    return this.fieldId;
   }
 
   static u8ToEncoding(value: number) {
     switch (value) {
       case 0x00:
-        return Encoding.Utf8;
+        return Encoding.UTF_8;
       case 0x01:
-        return Encoding.AllToLowerSpecial;
+        return Encoding.ALL_TO_LOWER_SPECIAL;
       case 0x02:
-        return Encoding.LowerUpperDigitSpecial;
+        return Encoding.LOWER_UPPER_DIGIT_SPECIAL;
     }
   }
 
@@ -48,15 +54,16 @@ export class FieldInfo {
     size = (size === 0b111) ? reader.varInt32() + 7 : size;
     const typeId = reader.int16();
     // reader.skip(size);
-    const fieldName = MetaString.decode(reader.buffer(size)); // now we commentd this line , the code work well
+    const encoding = reader.uint8();
+    const fieldName = fieldDecoder.decode(reader, size, encoding); // now we commentd this line , the code work well
     return new FieldInfo(fieldName, typeId);
   }
 
   toBytes() {
     const writer = new BinaryWriter({});
-    const metaString = MetaString.encode(this.fieldName);
+    const metaString = fieldEncoder.encode(this.fieldName);
     let header = 1 << 2;
-    const size = metaString.byteLength;
+    const size = metaString.getBytes().byteLength;
     const bigSize = size >= 7;
     if (bigSize) {
       header |= 0b11100000;
@@ -67,7 +74,8 @@ export class FieldInfo {
       writer.uint8(header);
     }
     writer.int16(this.fieldId);
-    writer.buffer(metaString);
+    writer.uint8(metaString.getEncoding());
+    writer.buffer(metaString.getBytes());
     return writer.dump();
   }
 }
@@ -107,7 +115,11 @@ class TypeMetaLayer {
 }
 
 export class TypeMeta {
-  constructor(private hash: bigint, private layers: TypeMetaLayer[]) {
+  private constructor(private hash: bigint, private layers: TypeMetaLayer[]) {
+  }
+
+  getHash() {
+    return this.hash;
   }
 
   getFieldInfo() {
@@ -118,8 +130,12 @@ export class TypeMeta {
     return this.layers[0].getTypeId();
   }
 
-  static fromFields(typeId: number, fieldInfo: FieldInfo[]) {
-    return new TypeMeta(BigInt(0), [new TypeMetaLayer(typeId, fieldInfo)]);
+  static fromClassInfo(classInfo: StructClassInfo) {
+    const typeId = classInfo.typeId;
+    const fieldInfo = Object.entries(classInfo.options.props!).map(([fieldName, classInfo]) => {
+      return new FieldInfo(fieldName, classInfo.typeId!);
+    });
+    return new TypeMeta(BigInt(fieldInfo.length), [new TypeMetaLayer(typeId, fieldInfo)]);
   }
 
   static fromBytes(reader: BinaryReader) {

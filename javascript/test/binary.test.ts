@@ -17,26 +17,18 @@
  * under the License.
  */
 
-import Fury, { TypeDescription, InternalSerializerType, ObjectTypeDescription } from '../packages/fury/index';
+import Fury, { Type } from '../packages/fury/index';
 import { describe, expect, test } from '@jest/globals';
 
 
 describe('binary', () => {
     test('should binary work', () => {
-        const description = {
-            type: InternalSerializerType.OBJECT,
-            options: {
-                props: {
-                    a: {
-                        type: InternalSerializerType.BINARY
-                    }
-                },
-                tag: "example.foo"
-            }
-        };
-        
+        const classinfo = Type.struct("example.foo", {
+            a: Type.binary()
+        })
+
         const fury = new Fury({ refTracking: true });    
-        const serializer = fury.registerSerializer(description).serializer;
+        const serializer = fury.registerSerializer(classinfo).serializer;
         const input = fury.serialize({ a: new Uint8Array([1, 2, 3]) }, serializer);
         const result = fury.deserialize(
             input

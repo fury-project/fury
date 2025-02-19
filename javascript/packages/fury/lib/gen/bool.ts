@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { TypeDescription } from "../description";
+import { ClassInfo } from "../classInfo";
 import { CodecBuilder } from "./builder";
 import { BaseSerializerGenerator } from "./serializer";
 import { CodegenRegistry } from "./router";
@@ -25,11 +25,11 @@ import { InternalSerializerType } from "../type";
 import { Scope } from "./scope";
 
 class BoolSerializerGenerator extends BaseSerializerGenerator {
-  description: TypeDescription;
+  classInfo: ClassInfo;
 
-  constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-    super(description, builder, scope);
-    this.description = description;
+  constructor(classinfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+    super(classinfo, builder, scope);
+    this.classInfo = classinfo;
   }
 
   writeStmt(accessor: string): string {
@@ -38,6 +38,14 @@ class BoolSerializerGenerator extends BaseSerializerGenerator {
 
   readStmt(accessor: (expr: string) => string): string {
     return accessor(`${this.builder.reader.uint8()} === 1`);
+  }
+
+  getFixedSize(): number {
+    return 4;
+  }
+
+  needToWriteRef(): boolean {
+    return false;
   }
 }
 

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { TypeDescription } from "../description";
+import { ClassInfo } from "../classInfo";
 import { CodecBuilder } from "./builder";
 import { BaseSerializerGenerator } from "./serializer";
 import { CodegenRegistry } from "./router";
@@ -25,11 +25,11 @@ import { InternalSerializerType } from "../type";
 import { Scope } from "./scope";
 
 class TimestampSerializerGenerator extends BaseSerializerGenerator {
-  description: TypeDescription;
+  classInfo: ClassInfo;
 
-  constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-    super(description, builder, scope);
-    this.description = description;
+  constructor(classInfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+    super(classInfo, builder, scope);
+    this.classInfo = classInfo;
   }
 
   writeStmt(accessor: string): string {
@@ -42,14 +42,22 @@ class TimestampSerializerGenerator extends BaseSerializerGenerator {
   readStmt(accessor: (expr: string) => string): string {
     return accessor(`new Date(Number(${this.builder.reader.int64()}))`);
   }
+
+  getFixedSize(): number {
+    return 11;
+  }
+
+  needToWriteRef(): boolean {
+    return false;
+  }
 }
 
 class DurationSerializerGenerator extends BaseSerializerGenerator {
-  description: TypeDescription;
+  classInfo: ClassInfo;
 
-  constructor(description: TypeDescription, builder: CodecBuilder, scope: Scope) {
-    super(description, builder, scope);
-    this.description = description;
+  constructor(classInfo: ClassInfo, builder: CodecBuilder, scope: Scope) {
+    super(classInfo, builder, scope);
+    this.classInfo = classInfo;
   }
 
   writeStmt(accessor: string): string {
@@ -69,6 +77,14 @@ class DurationSerializerGenerator extends BaseSerializerGenerator {
     return accessor(`
             new Date(${epoch} + (${this.builder.reader.int32()} * (24 * 60 * 60) * 1000))
         `);
+  }
+
+  getFixedSize(): number {
+    return 7;
+  }
+
+  needToWriteRef(): boolean {
+    return false;
   }
 }
 

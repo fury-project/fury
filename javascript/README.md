@@ -24,11 +24,11 @@ import Fury, { Type, InternalSerializerType } from '@furyjs/fury';
 import hps from '@furyjs/hps';
 
 // Now we describe data structures using JSON, but in the future, we will use more ways.
-const description = Type.object('example.foo', {
+const classInfo = Type.struct('example.foo', {
   foo: Type.string(),
 });
 const fury = new Fury({ hps });
-const { serialize, deserialize } = fury.registerSerializer(description);
+const { serialize, deserialize } = fury.registerSerializer(classInfo);
 const input = serialize({ foo: 'hello fury' });
 const result = deserialize(input);
 console.log(result);
