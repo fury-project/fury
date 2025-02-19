@@ -10,6 +10,7 @@ cc_library(
     deps = [
         "//cpp/fury/util:fury_util",
         "@com_google_benchmark//:benchmark",
+        "@simdutf//:simdutf"
     ],
     visibility = ["//visibility:public"],
 )

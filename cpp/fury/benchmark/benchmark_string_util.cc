@@ -25,6 +25,7 @@
 
 #include "fury/util/string_util.h"
 
+#include "simdutf.h"
 #include <cstring>
 #include <string>
 
@@ -217,6 +218,11 @@ bool isAscii_BaseLine(const std::string &str) {
   return true;
 }
 
+bool isAscii_SIMDUTF(const std::string &str) {
+  // Call the API directly without validation
+  return simdutf::validate_ascii(str.data(), str.size());
+}
+
 // Benchmark function for Baseline ASCII check
 static void BM_IsAscii_BaseLine(benchmark::State &state) {
   for (auto _ : state) {
@@ -227,8 +233,22 @@ static void BM_IsAscii_BaseLine(benchmark::State &state) {
   }
 }
 
+BENCHMARK(BM_IsAscii_BaseLine);
+
+// Benchmark function for SIMDUTF ASCII check
+static void BM_IsAscii_SIMDUTF(benchmark::State &state) {
+  for (auto _ : state) {
+    for (const auto &str : test_ascii_strings) {
+      bool result = isAscii_SIMDUTF(str);
+      benchmark::DoNotOptimize(result); // Prevent compiler optimization
+    }
+  }
+}
+
+BENCHMARK(BM_IsAscii_SIMDUTF);
+
 // Benchmark function for SIMD ASCII check
-static void BM_IsAscii_SIMD(benchmark::State &state) {
+static void BM_IsAscii_FURY(benchmark::State &state) {
   for (auto _ : state) {
     for (const auto &str : test_ascii_strings) {
       bool result = fury::isAscii(str);
@@ -237,8 +257,7 @@ static void BM_IsAscii_SIMD(benchmark::State &state) {
   }
 }
 
-BENCHMARK(BM_IsAscii_BaseLine);
-BENCHMARK(BM_IsAscii_SIMD);
+BENCHMARK(BM_IsAscii_FURY);
 
 // Baseline implementation to check if a string is Latin-1
 bool isLatin1_BaseLine(const std::u16string &str) {
@@ -254,6 +273,18 @@ bool isLatin1_BaseLine(const std::u16string &str) {
   return true;
 }
 
+bool isLatin1_SIMDUTF(const std::u16string &str) {
+  // Try the conversion directly, and all characters are considered Latin1 if
+  // they are successfully converted
+  size_t latin1_len = simdutf::latin1_length_from_utf16(str.size());
+  if (latin1_len != str.size())
+    return false;
+  std::string buffer(str.size(), '\0');
+  size_t converted =
+      simdutf::convert_utf16_to_latin1(str.data(), str.size(), buffer.data());
+  return converted == str.size();
+}
+
 // Benchmark function for Baseline Latin-1 check
 static void BM_IsLatin1_BaseLine(benchmark::State &state) {
   for (auto _ : state) {
@@ -264,8 +295,22 @@ static void BM_IsLatin1_BaseLine(benchmark::State &state) {
   }
 }
 
+BENCHMARK(BM_IsLatin1_BaseLine);
+
 // Benchmark function for Optimized Latin-1 check
-static void BM_IsLatin1_SIMD(benchmark::State &state) {
+static void BM_IsLatin1_SIMDUTF(benchmark::State &state) {
+  for (auto _ : state) {
+    for (const auto &str : test_latin1_strings) {
+      bool result = isLatin1_SIMDUTF(str);
+      benchmark::DoNotOptimize(result); // Prevent compiler optimization
+    }
+  }
+}
+
+BENCHMARK(BM_IsLatin1_SIMDUTF);
+
+// Benchmark function for Optimized Latin-1 check
+static void BM_IsLatin1_FURY(benchmark::State &state) {
   for (auto _ : state) {
     for (const auto &str : test_latin1_strings) {
       bool result = fury::isLatin1(str);
@@ -274,8 +319,7 @@ static void BM_IsLatin1_SIMD(benchmark::State &state) {
   }
 }
 
-BENCHMARK(BM_IsLatin1_BaseLine);
-BENCHMARK(BM_IsLatin1_SIMD);
+BENCHMARK(BM_IsLatin1_FURY);
 
 /*
  * TEST Utf16HasSurrogatePairs
@@ -301,9 +345,11 @@ static void BM_Utf16HasSurrogatePairs_BaseLine(benchmark::State &state) {
   }
 }
 
+BENCHMARK(BM_Utf16HasSurrogatePairs_BaseLine);
+
 // Benchmark function for checking if a UTF-16 string contains surrogate pairs
 // with SIMD
-static void BM_Utf16HasSurrogatePairs_SIMD(benchmark::State &state) {
+static void BM_Utf16HasSurrogatePairs_FURY(benchmark::State &state) {
   for (auto _ : state) {
     for (const auto &str : test_utf16_strings) {
       bool result = fury::utf16HasSurrogatePairs(str);
@@ -311,8 +357,8 @@ static void BM_Utf16HasSurrogatePairs_SIMD(benchmark::State &state) {
     }
   }
 }
-BENCHMARK(BM_Utf16HasSurrogatePairs_BaseLine);
-BENCHMARK(BM_Utf16HasSurrogatePairs_SIMD);
+
+BENCHMARK(BM_Utf16HasSurrogatePairs_FURY);
 
 /*
  * TEST Utf16ToUtf8
@@ -350,6 +396,25 @@ std::string utf16ToUtf8BaseLine(const std::u16string &utf16,
   return utf8_result;
 }
 
+std::string utf16ToUtf8_SIMDUTF(const std::u16string &utf16,
+                                bool is_little_endian) {
+  if (utf16.empty())
+    return {};
+  size_t utf8_len =
+      is_little_endian
+          ? simdutf::utf8_length_from_utf16le(utf16.data(), utf16.size())
+          : simdutf::utf8_length_from_utf16be(utf16.data(), utf16.size());
+
+  std::string utf8_result(utf8_len, '\0');
+  size_t converted = is_little_endian
+                         ? simdutf::convert_utf16le_to_utf8(
+                               utf16.data(), utf16.size(), utf8_result.data())
+                         : simdutf::convert_utf16be_to_utf8(
+                               utf16.data(), utf16.size(), utf8_result.data());
+  utf8_result.resize(converted);
+  return utf8_result;
+}
+
 // Benchmark function for Standard Library UTF-16 to UTF-8 conversion
 static void BM_Utf16ToUtf8_StandardLibrary(benchmark::State &state) {
   for (auto _ : state) {
@@ -360,6 +425,8 @@ static void BM_Utf16ToUtf8_StandardLibrary(benchmark::State &state) {
     }
   }
 }
+
+BENCHMARK(BM_Utf16ToUtf8_StandardLibrary);
 
 // Benchmark function for Baseline UTF-16 to UTF-8 conversion
 static void BM_Utf16ToUtf8_BaseLine(benchmark::State &state) {
@@ -372,8 +439,23 @@ static void BM_Utf16ToUtf8_BaseLine(benchmark::State &state) {
   }
 }
 
+BENCHMARK(BM_Utf16ToUtf8_BaseLine);
+
 // Benchmark function for SIMD-based UTF-16 to UTF-8 conversion
-static void BM_Utf16ToUtf8_SIMD(benchmark::State &state) {
+static void BM_Utf16ToUtf8_SIMDUTF(benchmark::State &state) {
+  for (auto _ : state) {
+    for (const auto &str : test_utf16_strings) {
+      std::string utf8 = utf16ToUtf8_SIMDUTF(str, true);
+      benchmark::DoNotOptimize(
+          utf8); // Prevents the compiler from optimizing away unused variables
+    }
+  }
+}
+
+BENCHMARK(BM_Utf16ToUtf8_SIMDUTF);
+
+// Benchmark function for SIMD-based UTF-16 to UTF-8 conversion
+static void BM_Utf16ToUtf8_FURY(benchmark::State &state) {
   for (auto _ : state) {
     for (const auto &str : test_utf16_strings) {
       std::string utf8 = fury::utf16ToUtf8(str, true);
@@ -383,9 +465,7 @@ static void BM_Utf16ToUtf8_SIMD(benchmark::State &state) {
   }
 }
 
-BENCHMARK(BM_Utf16ToUtf8_StandardLibrary);
-BENCHMARK(BM_Utf16ToUtf8_BaseLine);
-BENCHMARK(BM_Utf16ToUtf8_SIMD);
+BENCHMARK(BM_Utf16ToUtf8_FURY);
 
 /*
  * TEST Utf8ToUtf16
@@ -470,6 +550,25 @@ std::u16string utf8ToUtf16BaseLine(const std::string &utf8,
   return utf16;
 }
 
+std::u16string utf8ToUtf16_SIMDUTF(const std::string &utf8,
+                                   bool is_little_endian) {
+  if (utf8.empty())
+    return {};
+
+  size_t utf16_len = simdutf::utf16_length_from_utf8(utf8.data(), utf8.size());
+
+  std::u16string utf16_result(utf16_len, u'\0');
+
+  size_t converted = is_little_endian
+                         ? simdutf::convert_utf8_to_utf16le(
+                               utf8.data(), utf8.size(), utf16_result.data())
+                         : simdutf::convert_utf8_to_utf16be(
+                               utf8.data(), utf8.size(), utf16_result.data());
+
+  utf16_result.resize(converted);
+  return utf16_result;
+}
+
 // Benchmark function for Standard Library UTF-8 to UTF-16 conversion
 static void BM_Utf8ToUtf16_StandardLibrary(benchmark::State &state) {
   for (auto _ : state) {
@@ -480,6 +579,7 @@ static void BM_Utf8ToUtf16_StandardLibrary(benchmark::State &state) {
     }
   }
 }
+BENCHMARK(BM_Utf8ToUtf16_StandardLibrary);
 
 // Benchmark function for Baseline UTF-8 to UTF-16 conversion
 static void BM_Utf8ToUtf16_BaseLine(benchmark::State &state) {
@@ -492,8 +592,23 @@ static void BM_Utf8ToUtf16_BaseLine(benchmark::State &state) {
   }
 }
 
+BENCHMARK(BM_Utf8ToUtf16_BaseLine);
+
 // Benchmark function for SIMD-based UTF-8 to UTF-16 conversion
-static void BM_Utf8ToUtf16_SIMD(benchmark::State &state) {
+static void BM_Utf8ToUtf16_SIMDUTF(benchmark::State &state) {
+  for (auto _ : state) {
+    for (const auto &str : test_utf8_strings) {
+      std::u16string utf16 = utf8ToUtf16_SIMDUTF(str, true);
+      benchmark::DoNotOptimize(
+          utf16); // Prevents the compiler from optimizing away unused variables
+    }
+  }
+}
+
+BENCHMARK(BM_Utf8ToUtf16_SIMDUTF);
+
+// Benchmark function for SIMD-based UTF-8 to UTF-16 conversion
+static void BM_Utf8ToUtf16_FURY(benchmark::State &state) {
   for (auto _ : state) {
     for (const auto &str : test_utf8_strings) {
       std::u16string utf16 = fury::utf8ToUtf16(str, true);
@@ -503,8 +618,6 @@ static void BM_Utf8ToUtf16_SIMD(benchmark::State &state) {
   }
 }
 
-BENCHMARK(BM_Utf8ToUtf16_StandardLibrary);
-BENCHMARK(BM_Utf8ToUtf16_BaseLine);
-BENCHMARK(BM_Utf8ToUtf16_SIMD);
+BENCHMARK(BM_Utf8ToUtf16_FURY);
 
 BENCHMARK_MAIN();

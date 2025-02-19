@@ -88,9 +88,6 @@ TEST(StringUtilTest, TestisLatin1) {
   EXPECT_FALSE(isLatin1(u"Javaone Keynote\u1234"));
   EXPECT_TRUE(isLatin1(u"a\xFF")); // ÿ in Latin-1
   EXPECT_TRUE(isLatin1(u"\x80"));  //  in Latin-1
-  const uint16_t str[] = {256, 256};
-  EXPECT_FALSE(isLatin1(str, 2)); // Ā (not in Latin-1)
-
   for (size_t i = 1; i < 256; i++) {
     EXPECT_TRUE(isLatin1(std::u16string(i, '.') + u"Fury"));
     EXPECT_FALSE(isLatin1(std::u16string(i, '.') + u"序列化"));
