@@ -61,26 +61,54 @@ public class JDKCompatibilityTest {
       Assert.assertEquals(fury.deserialize(serialized), object);
       write("object_schema_compatible" + Platform.JAVA_VERSION, serialized);
     }
+    // 11Test the case for the user registration class
+    {
+      Fury fury = builder().build();
+      fury.register(CustomObject.class);
+      CustomObject customObject = createCustomObject();
+      Assert.assertEquals(createCustomObject(), customObject);
+      byte[] serialized = fury.serialize(customObject);
+      Assert.assertEquals(fury.deserialize(serialized), customObject);
+      write("custom_object_schema_consistent" + Platform.JAVA_VERSION, serialized);
+    }
+    {
+      Fury fury = builder().withCompatibleMode(CompatibleMode.COMPATIBLE).build();
+      fury.register(CustomObject.class);
+      CustomObject customObject = createCustomObject();
+      byte[] serialized = fury.serialize(customObject);
+      Assert.assertEquals(fury.deserialize(serialized), customObject);
+      write("custom_object_schema_compatible" + Platform.JAVA_VERSION, serialized);
+    }
   }
 
   @Test
   public void testSchemaConsist() throws IOException {
     Object object = createObject();
     Fury fury = builder().build();
+    fury.register(CustomObject.class);
     File dir = new File(".");
     File[] files = dir.listFiles((d, name) -> name.startsWith("object_schema_consistent"));
     assert files != null;
     check(object, fury, files);
+    CustomObject customObject = createCustomObject();
+    File[] files1 = dir.listFiles((d, name) -> name.startsWith("custom_object_schema_consistent"));
+    assert files1 != null;
+    check(customObject, fury, files1);
   }
 
   @Test
   public void testSchemaCompatible() throws IOException {
     Object object = createObject();
     Fury fury = builder().withCompatibleMode(CompatibleMode.COMPATIBLE).build();
+    fury.register(CustomObject.class);
     File dir = new File(".");
     File[] files = dir.listFiles((d, name) -> name.startsWith("object_schema_compatible"));
     assert files != null;
     check(object, fury, files);
+    CustomObject customObject = createCustomObject();
+    File[] files1 = dir.listFiles((d, name) -> name.startsWith("custom_object_schema_compatible"));
+    assert files1 != null;
+    check(customObject, fury, files1);
   }
 
   private static void check(Object object, Fury fury, File[] files) throws IOException {
@@ -105,5 +133,38 @@ public class JDKCompatibilityTest {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  static class CustomObject {
+    private String str;
+
+    public String getStr() {
+      return str;
+    }
+
+    public void setStr(String str) {
+      this.str = str;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      CustomObject entity = (CustomObject) o;
+      return str.equals(entity.str);
+    }
+
+    @Override
+    public int hashCode() {
+      return str.hashCode();
+    }
+  }
+
+  CustomObject createCustomObject() {
+    CustomObject customObject = new CustomObject();
+    customObject.setStr("hello");
+    return customObject;
   }
 }
