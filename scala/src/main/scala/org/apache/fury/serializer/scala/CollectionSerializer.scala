@@ -185,3 +185,56 @@ class ScalaSeqSerializer[A, T <: scala.collection.Seq[A]](fury: Fury, cls: Class
     new ListAdapter[Any](value)
   }
 }
+abstract class AbstractScalaCollectionSerializer[A, T <: Iterable[A]](fury: Fury, cls: Class[T])
+  extends AbstractCollectionSerializer[T](fury, cls) {
+
+  // Existing methods
+
+  // Add copy method
+  def copy(value: T): T = {
+    val builder = value.iterableFactory.newBuilder[A]
+    builder ++= value
+    builder.result()
+  }
+}
+
+class ScalaCollectionSerializer[A, T <: Iterable[A]] (fury: Fury, cls: Class[T])
+  extends AbstractScalaCollectionSerializer[A, T](fury, cls) {
+  override def onCollectionWrite(buffer: MemoryBuffer, value: T): util.Collection[_] = {
+    val factory: Factory[A, Any] = value.iterableFactory.iterableFactory
+    val adapter = new CollectionAdapter[A, T](value)
+    buffer.writeVarUint32Small7(adapter.size)
+    fury.writeRef(buffer, factory)
+    adapter
+  }
+
+  // Implement copy method
+  override def copy(value: T): T = super.copy(value)
+}
+
+class ScalaSortedSetSerializer[A, T <: scala.collection.SortedSet[A]](fury: Fury, cls: Class[T])
+  extends AbstractScalaCollectionSerializer[A, T](fury, cls) {
+  override def onCollectionWrite(buffer: MemoryBuffer, value: T): util.Collection[_] = {
+    buffer.writeVarUint32Small7(value.size)
+    val factory = value.sortedIterableFactory.evidenceIterableFactory[Any](
+      value.ordering.asInstanceOf[Ordering[Any]])
+    fury.writeRef(buffer, factory)
+    new CollectionAdapter[A, T](value)
+  }
+
+  // Implement copy method
+  override def copy(value: T): T = super.copy(value)
+}
+
+class ScalaSeqSerializer[A, T <: scala.collection.Seq[A]](fury: Fury, cls: Class[T])
+  extends AbstractScalaCollectionSerializer[A, T](fury, cls)  {
+  override def onCollectionWrite(buffer: MemoryBuffer, value: T): util.Collection[_] = {
+    buffer.writeVarUint32Small7(value.size)
+    val factory: Factory[A, Any] = value.iterableFactory.iterableFactory
+    fury.writeRef(buffer, factory)
+    new ListAdapter[Any](value)
+  }
+
+  // Implement copy method
+  override def copy(value: T): T = super.copy(value)
+}

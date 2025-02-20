@@ -1,0 +1,5 @@
+<dependency>
+    <groupId>com.github.luben</groupId>
+    <artifactId>zstd-jni</artifactId>
+    <version>1.5.2</version> 
+</dependency>
