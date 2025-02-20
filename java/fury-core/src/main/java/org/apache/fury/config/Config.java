@@ -58,6 +58,7 @@ public class Config implements Serializable {
   private final MetaCompressor metaCompressor;
   private final boolean asyncCompilationEnabled;
   private final boolean deserializeNonexistentClass;
+  private final boolean deserializeNonexistentClassNotWriteFullClassInfo;
   private final boolean scalaOptimizationEnabled;
   private transient int configHash;
   private final boolean deserializeNonexistentEnumValueAsNull;
@@ -94,6 +95,8 @@ public class Config implements Serializable {
       // unexisted class by type info in data.
       Preconditions.checkArgument(metaShareEnabled || compatibleMode == CompatibleMode.COMPATIBLE);
     }
+    deserializeNonexistentClassNotWriteFullClassInfo =
+        builder.deserializeNonexistentClassNotWriteFullClassInfo;
     asyncCompilationEnabled = builder.asyncCompilationEnabled;
     scalaOptimizationEnabled = builder.scalaOptimizationEnabled;
     deserializeNonexistentEnumValueAsNull = builder.deserializeNonexistentEnumValueAsNull;
@@ -252,6 +255,14 @@ public class Config implements Serializable {
   }
 
   /**
+   * Whether deserialize/skip data of un-existed class with full Class info. if enable then not
+   * write full class info
+   */
+  public boolean deserializeNonexistentClassNotWriteFullClassInfo() {
+    return deserializeNonexistentClassNotWriteFullClassInfo;
+  }
+
+  /**
    * Whether JIT is enabled.
    *
    * @see #isAsyncCompilationEnabled
@@ -305,6 +316,8 @@ public class Config implements Serializable {
         && Objects.equals(metaCompressor, config.metaCompressor)
         && asyncCompilationEnabled == config.asyncCompilationEnabled
         && deserializeNonexistentClass == config.deserializeNonexistentClass
+        && deserializeNonexistentClassNotWriteFullClassInfo
+            == config.deserializeNonexistentClassNotWriteFullClassInfo
         && scalaOptimizationEnabled == config.scalaOptimizationEnabled
         && language == config.language
         && compatibleMode == config.compatibleMode
@@ -341,6 +354,7 @@ public class Config implements Serializable {
         metaCompressor,
         asyncCompilationEnabled,
         deserializeNonexistentClass,
+        deserializeNonexistentClassNotWriteFullClassInfo,
         scalaOptimizationEnabled);
   }
 

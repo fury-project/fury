@@ -28,6 +28,7 @@ import org.apache.fury.collection.LongMap;
 import org.apache.fury.collection.MapEntry;
 import org.apache.fury.collection.Tuple2;
 import org.apache.fury.collection.Tuple3;
+import org.apache.fury.config.Config;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.meta.ClassDef;
 import org.apache.fury.resolver.ClassInfo;
@@ -193,6 +194,7 @@ public final class NonexistentClassSerializers {
       ClassFieldsInfo fieldsInfo = getClassFieldsInfo(classDef);
       ObjectSerializer.FinalTypeField[] finalFields = fieldsInfo.finalFields;
       boolean[] isFinal = fieldsInfo.isFinal;
+      Config config = fury.getConfig();
       for (int i = 0; i < finalFields.length; i++) {
         ObjectSerializer.FinalTypeField fieldInfo = finalFields[i];
         Object fieldValue;
@@ -208,20 +210,32 @@ public final class NonexistentClassSerializers {
                     fury, refResolver, classResolver, fieldInfo, isFinal[i], buffer);
           }
         }
-        entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
+        entries.add(new MapEntry(getFileName(fieldInfo.qualifiedFieldName, config), fieldValue));
       }
       for (ObjectSerializer.GenericTypeField fieldInfo : fieldsInfo.otherFields) {
         Object fieldValue = ObjectSerializer.readOtherFieldValue(fury, fieldInfo, buffer);
-        entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
+        entries.add(new MapEntry(getFileName(fieldInfo.qualifiedFieldName, config), fieldValue));
       }
       Generics generics = fury.getGenerics();
       for (ObjectSerializer.GenericTypeField fieldInfo : fieldsInfo.containerFields) {
         Object fieldValue =
             ObjectSerializer.readContainerFieldValue(fury, generics, fieldInfo, buffer);
-        entries.add(new MapEntry(fieldInfo.qualifiedFieldName, fieldValue));
+        entries.add(new MapEntry(getFileName(fieldInfo.qualifiedFieldName, config), fieldValue));
       }
       obj.setEntries(entries);
       return obj;
+    }
+  }
+
+  public static String getFileName(String qualifiedFieldName, Config config) {
+    if (config.deserializeNonexistentClassNotWriteFullClassInfo()) {
+      int index = qualifiedFieldName.lastIndexOf(".");
+      if (index < 0) {
+        return qualifiedFieldName;
+      }
+      return qualifiedFieldName.substring(index + 1);
+    } else {
+      return qualifiedFieldName;
     }
   }
 
