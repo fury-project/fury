@@ -95,8 +95,64 @@ static inline bool hasSurrogatePairFallback(const uint16_t *data, size_t size) {
   }
   return false;
 }
+#if defined(FURY_HAS_IMMINTRIN)
 
-#if defined(FURY_HAS_NEON)
+inline bool isAscii(const char *data, size_t length) {
+  constexpr size_t VECTOR_SIZE = 32;
+  const auto *ptr = reinterpret_cast<const __m256i *>(data);
+  const auto *end = ptr + length / VECTOR_SIZE;
+  const __m256i mask = _mm256_set1_epi8(0x80);
+
+  for (; ptr < end; ++ptr) {
+    __m256i vec = _mm256_loadu_si256(ptr);
+    __m256i cmp = _mm256_and_si256(vec, mask);
+    if (!_mm256_testz_si256(cmp, cmp))
+      return false;
+  }
+
+  return isAsciiFallback(data + (length / VECTOR_SIZE) * VECTOR_SIZE,
+                         length % VECTOR_SIZE);
+}
+
+inline bool isLatin1(const uint16_t *data, size_t length) {
+  constexpr size_t VECTOR_SIZE = 16;
+  const auto *ptr = reinterpret_cast<const __m256i *>(data);
+  const auto *end = ptr + length / VECTOR_SIZE;
+
+  const __m256i mask = _mm256_set1_epi16(0x00FF);
+
+  for (; ptr < end; ++ptr) {
+    __m256i vec = _mm256_loadu_si256(ptr);
+    __m256i cmp = _mm256_cmpgt_epi16(vec, mask);
+    if (!_mm256_testz_si256(cmp, cmp)) {
+      return false;
+    }
+  }
+
+  return isLatin1Fallback(data + (length / VECTOR_SIZE) * VECTOR_SIZE,
+                          length % VECTOR_SIZE);
+}
+inline bool utf16HasSurrogatePairs(const uint16_t *data, size_t length) {
+  constexpr size_t VECTOR_SIZE = 16;
+  const auto *ptr = reinterpret_cast<const __m256i *>(data);
+  const auto *end = ptr + length / VECTOR_SIZE;
+  const __m256i lower_bound = _mm256_set1_epi16(0xD800);
+  const __m256i higher_bound = _mm256_set1_epi16(0xDFFF);
+
+  for (; ptr < end; ++ptr) {
+    __m256i vec = _mm256_loadu_si256(ptr);
+    __m256i mask1 = _mm256_cmpgt_epi16(vec, lower_bound);
+    __m256i mask2 = _mm256_cmpgt_epi16(higher_bound, vec);
+    __m256i result = _mm256_and_si256(mask1, mask2);
+    if (!_mm256_testz_si256(result, result))
+      return true;
+  }
+
+  return hasSurrogatePairFallback(data + (length / VECTOR_SIZE) * VECTOR_SIZE,
+                                  length % VECTOR_SIZE);
+}
+
+#elif defined(FURY_HAS_NEON)
 inline bool isAscii(const char *data, size_t length) {
   size_t i = 0;
   uint8x16_t mostSignificantBit = vdupq_n_u8(0x80);

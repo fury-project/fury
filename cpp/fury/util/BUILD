@@ -4,8 +4,6 @@ cc_library(
     name = "fury_util",
     srcs = glob(["*.cc"], exclude=["*test.cc"]),
     hdrs = glob(["*.h"]),
-    copts = ["-mavx2"],  # Enable AVX2 support
-    linkopts = ["-mavx2"],  # Ensure linker also knows about AVX2
     strip_include_prefix = "/cpp",
     alwayslink=True,
     linkstatic=True,
@@ -14,6 +12,7 @@ cc_library(
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:stacktrace",
         "@com_google_absl//absl/debugging:symbolize",
+        "@simdutf//:simdutf"
     ],
     visibility = ["//visibility:public"],
 )
