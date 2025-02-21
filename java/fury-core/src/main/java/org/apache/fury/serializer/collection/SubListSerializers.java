@@ -38,7 +38,6 @@ public class SubListSerializers {
   private static final Class<?> SubListClass;
   private static final Class<?> RandomAccessSubListClass;
   private static final Class<?> ArrayListSubListClass;
-  private static final Class<?> ImmutableSubListClass;
 
   private interface Stub {}
 
@@ -63,22 +62,14 @@ public class SubListSerializers {
     } catch (ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
-    Class<?> cls;
-    try {
-      cls = Class.forName("java.util.ImmutableCollections$SubList");
-    } catch (ClassNotFoundException e) {
-      class ImmutableSubListStub implements Stub {}
-
-      cls = ImmutableSubListStub.class;
-    }
-    ImmutableSubListClass = cls;
   }
 
   public static void registerSerializers(Fury fury, boolean preserveView) {
     ClassResolver classResolver = fury.getClassResolver();
+    // java.util.ImmutableCollections$SubList is already registered in ImmutableCollectionSerializers
     for (Class<?> cls :
         new Class[] {
-          SubListClass, RandomAccessSubListClass, ArrayListSubListClass, ImmutableSubListClass
+          SubListClass, RandomAccessSubListClass, ArrayListSubListClass
         }) {
       if (fury.trackingRef() && preserveView && fury.getConfig().getLanguage() == Language.JAVA) {
         classResolver.registerSerializer(cls, new SubListViewSerializer(fury, cls));
